@@ -24,7 +24,7 @@
 
 
 /*!
-    @brief  Computes the OSP CRC for a sequence of bytes
+    @brief  Computes the OSP CRC for a sequence of bytes.
     @param  buf
             A pointer to a sequence of bytes.
     @param  size

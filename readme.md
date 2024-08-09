@@ -14,10 +14,11 @@ Library _aoosp_ is at the heart of the dependency graph.
 
 It contains functions to construct telegrams (byte arrays) to be send to OSP nodes.
 It also contains functions to destruct response telegrams received back from OSP nodes.
-Both functions are hidden behind the API; the API allows sending and receiving telegrams.
+Both functions are hidden behind the API; the API allows sending and receiving telegrams,
+which involves constructing, transmit-out, transmit-in and destructing.
 
-For telegram transmit this library relies on a communications layer, typically _aospi_.
-That library expects a board like **OSP32**.
+For telegram transmission this library relies on a communications layer, typically _aospi_.
+That library expects a board like the **OSP32** board in the evaluation kit.
 
 ![aoosp in context](extras/aolibs-aoosp.drawio.png)
 
@@ -40,7 +41,7 @@ File > Examples > OSP Telegrams aoosp > ...
 
 - **aoosp_topo**   
   This demo scans all nodes and prints out the chain configuration:
-  comms for both SIOs, dir, state, number of RGBs and I2C.
+  comms for both SIOs, direction, power state, number of RGBs and I2Cs.
 
 - **aoosp_error**  
   This demo shows how error handling works in SAID. The STAT register has 
@@ -56,12 +57,13 @@ File > Examples > OSP Telegrams aoosp > ...
 
 - **aoosp_i2c**   
   This demo first performs an I2C scan using the I2C bridge in a SAID.
-  Then it issues I2C read and write transactions to an EEPROM memory.
+  Then it issues I2C read and write transactions to an EEPROM memory,
   assumed to have I2C device address 0x50 connected to the first SAID.
   Finally it polls the INT line and shows its status on SAID1.RGB0.
 
 - **aoosp_otp**   
-  This demo reads and writes from/to the OTP of a SAID.
+  This demo reads and writes from/to the OTP (one time programmable 
+  memory) of a SAID.
 
 - **aoosp-sync**  
   This demo shows how to use the SYNC feature; a feature that switches on all 
@@ -69,9 +71,9 @@ File > Examples > OSP Telegrams aoosp > ...
   (AOOSP_CURCHN_FLAGS_SYNCEN). Next, set those channels to some PWM value.
   Finally we issue a SYNC by broadcasting the SYNC telegram. This makes
   all (channels) of all nodes that are configured for SYNC to activate their
-  PWM settings.
+  PWM settings. It is also possible to pulse a pin as hardware SYNC.
 
-- **aoosp_time**
+- **aoosp_time**  
   This demo sends a series of telegrams. The series originally comes from 
   `aomw_topo_build`. We measure how long it takes to run that series.
   Once we use the high level aoosp API, and once we use low level aospi API.
@@ -89,10 +91,10 @@ This library contains 4 modules, see figure below (arrows indicate #include).
   
 - **aoosp_prt** (`aoosp_prt.cpp` and `aoosp_prt.h`) is a slightly bigger module that implements 
   several functions to pretty print telegrams. It is normally not used in production code.
-  It is extensively used by the logging feature of module aoosp_send.
+  It is extensively used by the logging feature of module `aoosp_send`.
 
 - **aoosp_send** (`aoosp_send.cpp` and `aoosp_send.h`) is the _core_ module of the library.
-  It contains functions the send commands and receive the responses if there is any.
+  It contains functions that send commands and receive the responses if there is any.
   The module supports both RGBi's and SAIDs. Not all telegrams are implemented yet.
   The module is stateless, with one exception: it records if logging is enabled or disabled.
 
@@ -117,7 +119,7 @@ The headers contain little documentation; for that see the module source files.
 
 ### aoosp
 
-- `aoosp_init()` not really needed, but added for forward compatibility.
+- `aoosp_init()` not really needed (aoosp has no state to init), but added for forward compatibility.
 - `AOOSP_VERSION`  identifies the version of the library.
 
 
@@ -131,16 +133,18 @@ The headers contain little documentation; for that see the module source files.
 Contains several functions to print telegram fields more user friendly. Examples are:
 
 - `aoosp_prt_temp_said()` to convert a SAID raw temperature to Celsius.
-- `aoosp_prt_stat_state()` to convert a node state to a string.
+- `aoosp_prt_stat_state()` to convert a node stat to a string describing the power state.
 - `aoosp_prt_bytes()` to convert a byte array (like a telegram) to a string.
+- ...
 
 These functions are publicly accessible, but are intended for logging in this library.
 
 Warning: pretty print functions that return a `char *` all use the same global 
 character buffer  for returning the string. This means that only _one_ such function 
-can be used at a time. For example this will not work: 
+can be used at a time. For example this will _not_ work:
+ 
 ```
-  printf("%s-%s", aoosp_prt_stat_rgbi(x), aoosp_prt_stat_said(x) )
+  printf("%s-%s", aoosp_prt_stat_rgbi(x), aoosp_prt_stat_said(x) ); // ERROR: double prt
 ```
 
 
@@ -152,11 +156,12 @@ Examples are
 - `aoosp_send_reset()` resets all nodes in the chain (all "off"; they also lose their address).
 - `aoosp_send_initloop()` assigns an address to each node; also configures all nodes for Loop.
 - `aoosp_send_clrerror()` clears the error flags of the addressed node.
-- `aoosp_send_goactive()` switches the state of the addressed node to active.
-- `aoosp_send_readpwmchn()`  asks the addressed node to respond with its PWM settings of one of its channel.
+- `aoosp_send_goactive()` switches the power state of the addressed node to active ("on").
+- `aoosp_send_setpwmchn()` configures the PWM settings of one channel of the addressed node ("lit").
+- ...
 
 This module supports logging. 
-Via `aoosp_loglevel_set()` and `aoosp_loglevel_get()` the log level can be manipulated:
+Via `aoosp_loglevel_set()` and `aoosp_loglevel_get()` the log level can be managed:
 
 - `aoosp_loglevel_none` nothing is logged (default).
 - `aoosp_loglevel_args` logging of sent and received telegram arguments.
@@ -169,8 +174,8 @@ Some operations on OSP nodes require multiple telegrams.
 Some frequent ones have been abstracted in this module.
 
 - `aoosp_exec_resetinit()`         sends RESET and INIT telegrams, auto detecting BiDir or Loop.
-- `aoosp_exec_otpdump()`           reads the entire OTP and prints details requested in flags.
-- `aoosp_exec_setotp()`            updates one bye in OTP.
+- `aoosp_exec_otpdump()`           reads the entire OTP (mirror) and prints details requested in flags.
+- `aoosp_exec_setotp()`            updates one byte in the OTP (mirror).
 - `aoosp_exec_i2cenable_get()`     reads the I2C_BRIDGE_EN bit in OTP (mirror).
 - `aoosp_exec_i2cenable_set()`     writes the I2C_BRIDGE_EN bit in OTP (mirror).
 - `aoosp_exec_i2cpower()`          checks if the SAID has an I2C bridge, if so, powers the I2C bus.
@@ -182,9 +187,16 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2024 aug 9, 0.3.1**
+  - Typos fixed in `aoosp_send.cpp`.
+  - In `aoosp_send.h` cleaned up `AOOSP_ADDR_xxx`.
+  - Typos fixed in `readme.md`, `aoosp.cpp`, `aoosp_crc.cpp`, `aoosp_exec.h`.
+  - Typos fixed in `aoosp_i2c.ino`, `aoosp_sync.ino`, `aoosp_topo.ino`.
+  - Typos fixed in `aoosp_exec.cpp`.
+  
 - **2024 August 5, 0.3.0**  
-  - In `aoosp_send.h` all non-implemented TID tagged as not-yet-implemented or reserved.
-  - Corrected link to GitHub from aotop to OSP_aotop.
+  - In `aoosp_send.h` all non-implemented TIDs tagged as not-yet-implemented or reserved.
+  - Corrected link to GitHub from aotop to `OSP_aotop`.
   - Remove "oalib" from `sentence=` in `library.properties`.
   - Added `#include "../../said-password.h"`.
   - Added `aoosp_exec_syncpinenable_get()` and `aoosp_exec_syncpinenable_set()` and hw sync in `aoosp_sync.ino`.

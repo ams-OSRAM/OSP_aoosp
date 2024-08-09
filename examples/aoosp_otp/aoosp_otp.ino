@@ -24,7 +24,8 @@
 
 /*
 DESCRIPTION
-This demo reads and writes from/to the OTP of a SAID.
+This demo reads and writes from/to the OTP (one time programmable memory)
+of a SAID.
 Note that this accesses the OTP mirror in RAM, not the actual OTP ("ROM").
 The mirror is persistent over RESET, but not over POR (power on reset).
 The latter requires the CUST, BURN, IDLE steps, which are beyond the scope 

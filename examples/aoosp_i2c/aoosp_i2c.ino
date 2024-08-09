@@ -25,7 +25,7 @@
 /*
 DESCRIPTION
 This demo first performs an I2C scan using the I2C bridge in a SAID.
-Then it issues I2C read and write transactions to an EEPROM memory.
+Then it issues I2C read and write transactions to an EEPROM memory,
 assumed to have I2C device address 0x50 connected to the first SAID.
 Finally it polls the INT line and shows its status on SAID1.RGB0.
 

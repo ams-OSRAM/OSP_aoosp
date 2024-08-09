@@ -33,7 +33,7 @@ PWM settings.
 
 Instead of sending a SYNC telegram, there is also the option to use the
 SYNC pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC
-and on the OSP32 board have jummper J8 connect SAID2.B2 to the ESP32 GPIO9
+and on the OSP32 board have jumper J8 connect SAID2.B2 to the ESP32 GPIO9
 (instead of LED L2.1_B). Only SAID2 is wired for hardware sync on OSP32.
 
 HARDWARE

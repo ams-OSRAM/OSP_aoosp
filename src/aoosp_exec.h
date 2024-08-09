@@ -23,28 +23,28 @@
 
 
 // Sends RESET and INIT telegrams, auto detecting BiDir or Loop.
-aoresult_t aoosp_exec_resetinit    (uint16_t *last, int *loop);   
+aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop);   
 
 
 // Reads the entire OTP and prints details requested in AOOSP_OTPDUMP_XXX flags.
-aoresult_t aoosp_exec_otpdump      (uint16_t addr, int flags );   
+aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags );   
 // Updates one byte in OTP.
-aoresult_t aoosp_exec_setotp       (uint16_t addr, uint8_t otpaddr, uint8_t ormask, uint8_t andmask=0xFF); 
+aoresult_t aoosp_exec_setotp(uint16_t addr, uint8_t otpaddr, uint8_t ormask, uint8_t andmask=0xFF); 
 
 // Reads the I2C_BRIDGE_EN bit in OTP (mirror).
 aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable); 
 // Writes the I2C_BRIDGE_EN bit in OTP (mirror).
 aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable);   
 // Checks if the SAID has an I2C bridge, if so, powers the I2C bus.
-aoresult_t aoosp_exec_i2cpower     (uint16_t addr);               
+aoresult_t aoosp_exec_i2cpower(uint16_t addr);               
 // Reads the SYNC_PIN_EN bit from OTP (mirror).
 aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable);
 // Writes the SYNC_PIN_EN bit to OTP (mirror).
 aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable);
 // Writes to an I2C device connected to a SAID with I2C bridge..
-aoresult_t aoosp_exec_i2cwrite8    (uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t *buf, uint8_t count); 
+aoresult_t aoosp_exec_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t *buf, uint8_t count); 
 // Reads from an I2C device connected to a SAID with I2C bridge.
-aoresult_t aoosp_exec_i2cread8     (uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t *buf, uint8_t count); 
+aoresult_t aoosp_exec_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t *buf, uint8_t count); 
 
 
 // flags for aoosp_exec_otpdump determining what to print

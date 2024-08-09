@@ -26,10 +26,10 @@
 
 /*!
     @brief  Initializes the aoosp library.
-    @note   At this moment, the aoosp lib has no state to (initialize).
-            Present for future extensions that do need initialization
+    @note   At this moment, the aoosp lib has no state (to initialize).
+            Present for future extensions that do need initialization.
 */
 void aoosp_init() {
-  // No init is needed, but placed for future extensions.
+  // No init is needed, but already present for future extensions.
   Serial.printf("osp: init\n");
 }

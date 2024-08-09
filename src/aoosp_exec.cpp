@@ -66,7 +66,7 @@ aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop) {
 
   // Try INITLOOP (recall to set mux)
   aospi_dirmux_set_loop();
-  result= aoosp_send_initloop(1,&last2,&temp,&stat);
+  result= aoosp_send_initloop(0x001,&last2,&temp,&stat);
   if( result==aoresult_ok ) {
     *last=last2;  
     *loop=1; 
@@ -81,7 +81,7 @@ aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop) {
 
   // Try INITBIDIR (recall to set mux)
   aospi_dirmux_set_bidir(); 
-  result= aoosp_send_initbidir(1,&last2,&temp,&stat);
+  result= aoosp_send_initbidir(0x001,&last2,&temp,&stat);
   if( result==aoresult_ok ) {
     *last=last2;  
     *loop=0; 
@@ -165,11 +165,11 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
 
 
 /*!
-    @brief  Reads the OTP (mirror) updates location otpaddr
+    @brief  Reads the OTP (mirror) and updates location otpaddr
             by and-ing it with `andmask` then or-ing it with `ormask`,
             then writing the value back to the OTP (mirror).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  otpaddr
             The address of the OTP memory.
@@ -225,7 +225,7 @@ free_resources:
 /*!
     @brief  Reads the I2C_BRIDGE_EN bit from OTP (mirror).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             Output parameter returning the value of I2C_BRIDGE_EN.
@@ -241,16 +241,17 @@ aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable) {
   // Read current OTP row
   uint8_t buf[8];
   aoresult_t result = aoosp_send_readotp(addr,otp_addr,buf,8);
+  if( result!=aoresult_ok ) return result;
   // Check the OTP bit
   *enable = (buf[0] & otp_bit) != 0;
-  return result;
+  return aoresult_ok;
 }
 
 
 /*!
     @brief  Writes the I2C_BRIDGE_EN bit to OTP (mirror).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             The new value for I2C_BRIDGE_EN.
@@ -279,7 +280,7 @@ aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
     @brief  Checks the address SAID if its OTP has the I2C bridge feature 
             enabled, if so, powers the I2C bus.
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @return aoresult_ok if all ok, otherwise an error code.
 */
@@ -302,7 +303,7 @@ aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
 /*!
     @brief  Reads the SYNC_PIN_EN bit from OTP (mirror).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             Output parameter returning the value of SYNC_PIN_EN.
@@ -317,16 +318,17 @@ aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable) {
   // Read current OTP row
   uint8_t buf[8];
   aoresult_t result = aoosp_send_readotp(addr,otp_addr,buf,8);
+  if( result!=aoresult_ok ) return result;
   // Check the OTP bit
   *enable = (buf[0] & otp_bit) != 0;
-  return result;
+  return aoresult_ok;
 }
 
 
 /*!
     @brief  Writes the SYNC_PIN_EN bit to OTP (mirror).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             The new value for SYNC_PIN_EN.
@@ -352,10 +354,10 @@ aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable) {
 
 
 /*!
-    @brief  Writes count bytes from buf, into register raddr in I2C device 
-            daddr7, attached to OSP node addr.
+    @brief  Writes `count` bytes from `buf`, into register `raddr` in I2C 
+            device `daddr7`, attached to OSP node `addr`.
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast).
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  daddr7
             The 7 bits I2C device address used in mastering the write.
@@ -393,8 +395,8 @@ aoresult_t aoosp_exec_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
 
 
 /*!
-    @brief  Reads count bytes into buf, from register raddr in I2C device 
-            daddr7, attached to OSP node addr.
+    @brief  Reads `count` bytes into `buf`, from register `raddr` in I2C 
+            device `daddr7`, attached to OSP node `addr`.
     @param  addr
             The address to send the telegram to (unicast).
     @param  daddr7
@@ -433,5 +435,3 @@ aoresult_t aoosp_exec_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
   result = aoosp_send_readlast(addr,buf,count);
   return result;
 }
-
-

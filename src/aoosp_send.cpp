@@ -348,7 +348,7 @@ static aoresult_t aoosp_des_initbidir(aoosp_tele_t * tele, uint16_t * last, uint
     @param  stat
             Output parameter returning the status of the last node.
     @return aoresult_ok if all ok, otherwise an error code.
-            The output parameters are set.
+            When returning aoresult_ok, the output parameters are set.
     @note   Make sure the chain is wired as BiDir; e.g. if you have the OSP32 
             board, precede this call with a call to aospi_dirmux_set_bidir().
     @note   If there are branches, send INITBIDIR once for every branch,
@@ -450,7 +450,7 @@ static aoresult_t aoosp_des_initloop(aoosp_tele_t * tele, uint16_t * last, uint8
     @param  stat
             Output parameter returning the status of the last node.
     @return aoresult_ok if all ok, otherwise an error code.
-            The output parameters are set.
+            When returning aoresult_ok, the output parameters are set.
     @note   Make sure the chain is wired as Loop; e.g. if you have the OSP32 
             board, precede this call with a call to aospi_dirmux_set_loop().
     @note   If there are branches, probably it is better to use INITBIDIR.
@@ -677,7 +677,7 @@ static aoresult_t aoosp_des_identify(aoosp_tele_t * tele, uint32_t * id) {
     @param  id
             Output parameter returning the id of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
-            The output parameter is set.
+            When returning aoresult_ok, the output parameter is set.
     @note   See  AOOSP_IDENTIFY_ID2XXX to get the components from the id.
     @note   There is a convenience macro to check for a specific part: e.g. 
             AOOSP_IDENTIFY_IS_SAID(id) indicates if the node is a SAID.
@@ -777,6 +777,7 @@ static aoresult_t aoosp_des_readmult(aoosp_tele_t * tele, uint16_t *groups ) {
     @param  groups
             Output parameter returning the groups mask of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readmult(uint16_t addr, uint16_t *groups ) {
@@ -885,6 +886,10 @@ aoresult_t aoosp_send_setmult(uint16_t addr, uint16_t groups) {
 
 
 // ==========================================================================
+// Telegram 0E -- free
+
+
+// ==========================================================================
 // Telegram 0F SYNC
 
 
@@ -945,6 +950,10 @@ aoresult_t aoosp_send_sync(uint16_t addr) {
 
   return result;
 }
+
+
+// ==========================================================================
+// Telegram 10 -- free
 
 
 // ==========================================================================
@@ -1379,6 +1388,13 @@ aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
 
 
 // ==========================================================================
+// Telegram 1A -- free
+// Telegram 1B -- free
+// Telegram 1C -- free
+// Telegram 1D -- free
+
+
+// ==========================================================================
 // Telegram 1E READLAST (datasheet: READ_LAST)
 
 
@@ -1472,7 +1488,11 @@ aoresult_t aoosp_send_readlast(uint16_t addr, uint8_t * buf, int size) {
 
 
 // ==========================================================================
+// Telegram 1F -- free
+// Telegram 20 -- RESET has no SR
 // Telegram 21 CLRERROR_SR
+// Telegram 22 -- INIBIDIR has no SR
+// Telegram 23 -- INITLOOP has no SR
 // Telegram 24 GOSLEEP_SR
 
 
@@ -1530,6 +1550,7 @@ static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uin
     @param  stat
             Output parameter returning the status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_goactive_sr(uint16_t addr, uint8_t * temp, uint8_t * stat) {
@@ -1570,7 +1591,16 @@ aoresult_t aoosp_send_goactive_sr(uint16_t addr, uint8_t * temp, uint8_t * stat)
 
 // ==========================================================================
 // Telegram 26 GODEEPSLEEP_SR
+// Telegram 27 -- IDENTIFY has no SR
+// Telegram 28 -- P4ERRBIDIR has no SR
+// Telegram 29 -- P4ERRLOOP has no SR
+// Telegram 2A -- ASK_TINFO has no SR
+// Telegram 2B -- ASK_VINFO has no SR
+// Telegram 2C -- READMULT has no SR
 // Telegram 2D SETMULT_SR
+// Telegram 2E -- free
+// Telegram 2F -- SYNC has no SR
+// Telegram 30 -- free
 // Telegram 31 IDLE_SR
 // Telegram 32 FOUNDRY_SR
 // Telegram 33 CUST_SR
@@ -1632,6 +1662,7 @@ static aoresult_t aoosp_des_readstat(aoosp_tele_t * tele, uint8_t * stat) {
     @param  stat
             Output parameter returning the status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readstat(uint16_t addr, uint8_t * stat) {
@@ -1668,6 +1699,10 @@ aoresult_t aoosp_send_readstat(uint16_t addr, uint8_t * stat) {
 
   return result;
 }
+
+
+// ==========================================================================
+// Telegram 41 -- no SETSTAT
 
 
 // ==========================================================================
@@ -1723,6 +1758,7 @@ static aoresult_t aoosp_des_readtempstat(aoosp_tele_t * tele, uint8_t * temp, ui
     @param  stat
             Output parameter returning the status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   Converting raw temperature to Celsius depends on the node type.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -1760,6 +1796,10 @@ aoresult_t aoosp_send_readtempstat(uint16_t addr, uint8_t * temp, uint8_t * stat
 
   return result;
 }
+
+
+// ==========================================================================
+// Telegram 43 -- no SETTEMPSTAT
 
 
 // ==========================================================================
@@ -1813,6 +1853,7 @@ static aoresult_t aoosp_des_readcomst(aoosp_tele_t * tele, uint8_t * com) {
     @param  comm
             Output parameter returning the communication status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
     @note   Status fields depend on the node type.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -1853,7 +1894,9 @@ aoresult_t aoosp_send_readcomst(uint16_t addr, uint8_t * com) {
 
 
 // ==========================================================================
+// Telegram 45 -- no SETCOMST
 // Telegram 46 READLEDST
+// Telegram 47 -- no SETLEDST
 
 
 // ==========================================================================
@@ -1906,6 +1949,7 @@ static aoresult_t aoosp_des_readtemp(aoosp_tele_t * tele, uint8_t * temp) {
     @param  temp
             Output parameter returning the raw temperature of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
     @note   Converting raw temperature to Celsius depends on the node type.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -1946,6 +1990,7 @@ aoresult_t aoosp_send_readtemp(uint16_t addr, uint8_t * temp) {
 
 
 // ==========================================================================
+// Telegram 49 -- no SETTEMP
 // Telegram 4A READOTTH
 // Telegram 4B SETOTTH
 
@@ -2000,6 +2045,7 @@ static aoresult_t aoosp_des_readsetup(aoosp_tele_t * tele, uint8_t *flags ) {
     @param  flags
             Output parameter returning the setup of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readsetup(uint16_t addr, uint8_t *flags ) {
@@ -2166,6 +2212,7 @@ static aoresult_t aoosp_des_readpwm(aoosp_tele_t * tele, uint16_t *red, uint16_t
             Output parameter returning the daytime flags
             (bit 2 indicates daytime for red, bit 1 for green, 0 for blue).
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   Although this telegram ID (4E) is the same as for READPWMCHN, the 
             contents are specific for single channel PWM devices like RGBi's. 
             For multi channel PWM devices, like SAID, use READPWMCHN.
@@ -2268,6 +2315,7 @@ static aoresult_t aoosp_des_readpwmchn(aoosp_tele_t * tele, uint16_t *red, uint1
     @param  blue
             Output parameter returning the PWM setting for blue.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   Although this telegram ID (4E) is the same as for READPWM, the
             contents are specific for multi channel PWM devices like SAIDs. 
             For single channel PWM devices, like RGBi, use READPWM.
@@ -2549,6 +2597,7 @@ static aoresult_t aoosp_des_readcurchn(aoosp_tele_t * tele, uint8_t *flags, uint
     @param  bcur
             Output parameter returning the current level for blue of the addressed node and channel.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readcurchn(uint16_t addr, uint8_t chn, uint8_t *flags, uint8_t *rcur, uint8_t *gcur, uint8_t *bcur ) {
@@ -2734,6 +2783,7 @@ static aoresult_t aoosp_des_readi2ccfg(aoosp_tele_t * tele, uint8_t *flags, uint
     @param  speed
             Output parameter returning the I2C bus speed of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
     @note   The I2C configuration register also double as I2C status register.
             For example twelve bit addressing and speed are configuration settings,
             whereas interrupt, ack/nack, and busy are status flags.
@@ -3135,6 +3185,7 @@ aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data ) {
 // ==========================================================================
 // Telegram 5C READADCDAT  (datasheet: READ_ADC_DAT)
 // Telegram 5D TESTSCAN
+// Telegram 5E -- no GETTESTPW
 
 
 // ==========================================================================
@@ -3218,6 +3269,18 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw) {
 
 
 // ==========================================================================
+
+// Telegram 60 -- READSTAT with SR
+// Telegram 61 -- no SETSTAT (with SR)
+// Telegram 62 -- READTEMPST with SR
+// Telegram 63 -- no SETTEMPSTAT (with SR)
+// Telegram 64 -- READCOMST with SR
+// Telegram 65 -- no SETCOMST (with SR)
+// Telegram 66 -- READLEDST  with SR
+// Telegram 67 -- no SETLEDST (with SR)
+// Telegram 68 -- READTEMP with SR
+// Telegram 69 -- no SETTEMP (with SR)
+// Telegram 6A -- no READOTTH with SR
 // Telegram 6B SETOTTH_SR
 // Telegram 6D SETSETUP_SR
 // Telegram 6F SETPWM_SR

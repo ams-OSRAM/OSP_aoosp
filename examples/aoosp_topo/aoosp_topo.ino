@@ -25,7 +25,7 @@
 /*
 DESCRIPTION
 This demo scans all nodes and prints out the chain configuration:
-comms for both SIOs, dir, state, number of RGBs and I2C.
+comms for both SIOs, direction, power state, number of RGBs and I2Cs.
 
 HARDWARE
 The demo should run on the OSP32 board. Either have a terminator in the 
