@@ -52,6 +52,9 @@ aoresult_t aoosp_exec_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
 #define AOOSP_OTPDUMP_CUSTOMER_FIELDS 0x02
 #define AOOSP_OTPDUMP_CUSTOMER_ALL    (AOOSP_OTPDUMP_CUSTOMER_HEX | AOOSP_OTPDUMP_CUSTOMER_FIELDS  )
 
+#define AOOSP_OTPADDR_CUSTOMER_MIN    0x0D
+#define AOOSP_OTPADDR_CUSTOMER_MAX    0x20
+
 
 #endif
 

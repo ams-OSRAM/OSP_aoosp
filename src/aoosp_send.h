@@ -52,9 +52,13 @@
 
 
 // OSP addresses are 10 bits, some values have a special meaning.
+#define AOOSP_ADDR_GLOBALMIN             ( 0x000 )
+#define AOOSP_ADDR_GLOBALMAX             ( 0x3FE )
+
 #define AOOSP_ADDR_BROADCAST             ( 0x000 )
-#define AOOSP_ADDR_MIN                   ( 0x001 )
-#define AOOSP_ADDR_MAX                   ( 0x3EF )
+
+#define AOOSP_ADDR_UNICASTMIN            ( 0x001 )
+#define AOOSP_ADDR_UNICASTMAX            ( 0x3EF )
 
 #define AOOSP_ADDR_GROUP0                ( 0x3F0 )
 #define AOOSP_ADDR_GROUP1                ( 0x3F1 )
@@ -71,12 +75,12 @@
 #define AOOSP_ADDR_GROUP12               ( 0x3FC )
 #define AOOSP_ADDR_GROUP13               ( 0x3FD )
 #define AOOSP_ADDR_GROUP14               ( 0x3FE )
-#define AOOSP_ADDR_GROUP(n)              ( (n)<0 || (n)>14 ? AOOSP_ADDR_UNINIT : AOOSP_ADDR_GROUP0+(n) ) // map illegal group n to illegal address
+#define AOOSP_ADDR_GROUP(n)              ( (n)<0 || (n)>14 ? AOOSP_ADDR_NOTINIT : AOOSP_ADDR_GROUP0+(n) ) // map illegal group n to illegal address
 
 #define AOOSP_ADDR_UNINIT                ( 0x3FF )
 
 #define AOOSP_ADDR_ISBROADCAST(addr)     ( (addr)==AOOSP_ADDR_BROADCAST )
-#define AOOSP_ADDR_ISUNICAST(addr)       ( AOOSP_ADDR_MIN<=(addr) && (addr)<=AOOSP_ADDR_MAX )
+#define AOOSP_ADDR_ISUNICAST(addr)       ( AOOSP_ADDR_UNICASTMIN<=(addr) && (addr)<=AOOSP_ADDR_UNICASTMAX )
 #define OAOSP_ADDR_ISMULTICAST(addr)     ( AOOSP_ADDR_GROUP0<=(addr) && (addr)<=AOOSP_ADDR_GROUP14 )
 #define AOOSP_ADDR_ISOK(addr)            ( AOOSP_ADDR_ISBROADCAST(addr) || AOOSP_ADDR_ISUNICAST(addr) || OAOSP_ADDR_ISMULTICAST(addr) )
 

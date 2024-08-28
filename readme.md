@@ -29,43 +29,43 @@ This library comes with the following examples.
 You can find them in the Arduino IDE via 
 File > Examples > OSP Telegrams aoosp > ...
 
-- **aoosp_crc**  
+- **aoosp_crc** ([source](examples/aoosp_crc))  
   This demo computes the CRC of a telegram (byte buffer).
   Once to compute the required CRC for sending a command.
   Once to check the CRC in an incoming response.
 
-- **aoosp_min**  
+- **aoosp_min** ([source](examples/aoosp_min))  
   This demo sends a minimal set of OSP telegrams that light up an LED
   connected to a SAID channel. Once using BiDir, once using Loop.
   Then repeats.
 
-- **aoosp_topo**   
+- **aoosp_topo** ([source](examples/aoosp_topo))  
   This demo scans all nodes and prints out the chain configuration:
   comms for both SIOs, direction, power state, number of RGBs and I2Cs.
 
-- **aoosp_error**  
+- **aoosp_error** ([source](examples/aoosp_error))  
   This demo shows how error handling works in SAID. The STAT register has 
   error flags denoting which errors occurred. The SETUP register has flags
   denoting which errors need to be trapped. When an error occurs 
   (is flagged in STAT) whose trap bit is set (in SETUP), then the error
   is handled by switching to SLEEP state. This switches off the PWMs. 
 
-- **aoosp_group**  
+- **aoosp_group** ([source](examples/aoosp_group))  
   This demo groups two SAIDs, then sends PWM commands to that group.
   One command to switch the group to red, one command to switch the 
   group to green. Then repeats.
 
-- **aoosp_i2c**   
+- **aoosp_i2c** ([source](examples/aoosp_i2c))  
   This demo first performs an I2C scan using the I2C bridge in a SAID.
   Then it issues I2C read and write transactions to an EEPROM memory,
   assumed to have I2C device address 0x50 connected to the first SAID.
   Finally it polls the INT line and shows its status on SAID1.RGB0.
 
-- **aoosp_otp**   
+- **aoosp_otp** ([source](examples/aoosp_otp))  
   This demo reads and writes from/to the OTP (one time programmable 
   memory) of a SAID.
 
-- **aoosp-sync**  
+- **aoosp_sync** ([source](examples/aoosp_sync))  
   This demo shows how to use the SYNC feature; a feature that switches on all 
   LEDs at the same time. We first enable (channels) of nodes for SYNC
   (AOOSP_CURCHN_FLAGS_SYNCEN). Next, set those channels to some PWM value.
@@ -73,7 +73,7 @@ File > Examples > OSP Telegrams aoosp > ...
   all (channels) of all nodes that are configured for SYNC to activate their
   PWM settings. It is also possible to pulse a pin as hardware SYNC.
 
-- **aoosp_time**  
+- **aoosp_time** ([source](examples/aoosp_time))  
   This demo sends a series of telegrams. The series originally comes from 
   `aomw_topo_build`. We measure how long it takes to run that series.
   Once we use the high level aoosp API, and once we use low level aospi API.
@@ -186,6 +186,11 @@ Some frequent ones have been abstracted in this module.
 
 
 ## Version history _aoosp_
+
+- **2024 aug 28, 0.4.0**
+  - Renamed/split `AOOSP_ADDR_MIN|MAX` to `AOOSP_ADDR_UNICASTMIN|MAX` and `AOOSP_ADDR_GLOBALMIN|MAX`.
+  - Added `AOOSP_OTPADDR_CUSTOMER_MIN|MAX`.
+  - Added links in `readme.md` for all example sketches.
 
 - **2024 aug 9, 0.3.1**
   - Typos fixed in `aoosp_send.cpp`.
