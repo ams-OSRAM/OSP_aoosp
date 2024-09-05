@@ -31,34 +31,46 @@
 #define BITS_SLICE(v,lo,hi)  ( ((v)>>(lo)) & BITS_MASK((hi)-(lo)) )  // takes bits [lo..hi) from v: BITS_SLICE(0b11101011,2,6)=0b1010
 
 
+// Record the `last` from the previous call to uint16_t aoosp_exec_resetinit()
+static uint16_t aoosp_exec_resetinit_last_;
+
+
 /*!
     @brief  Sends RESET and INIT telegrams, auto detecting BiDir or Loop.
     @param  last
-            Output parameter returning the address of 
+            Output parameter returning the address of
             the last node - that is the chain length.
-            0 iff auto detect failed.
     @param  loop
             Output parameter returning the communication direction:
-            1 iff Loop, 0 iff BiDir, -1 iff auto detect failed.
-    @return aoresult_ok          if all ok, 
+            1 iff Loop, 0 iff BiDir.
+    @return aoresult_ok          if all ok,
             aoresult_sys_cabling if cable or terminator missing
             or other error code
-    #note   Controls the BiDir/Loop mux via aospi_dirmux_set_xxx.
+    @note   Output parameters are undefined when an error is returned.
+    @note   `last` and `loop` maybe NULL (avoids caller to allocate variable).
+            Node that `last` is also available via aoosp_exec_resetinit_last(),
+            and loop is available via aospi_dirmux_is_loop().
+    @note   Controls the BiDir/Loop direction mux via aospi_dirmux_set_xxx.
+    @note   First tries loop mode: sends RESET, sets dirmux to loop,
+            sends INITLOOP and checks if a response telegram is received.
+            If so exits with aoresult_ok.
+            If no telegram is received , tries BiDir mode: sends RESET,
+            sets dirmux to BiDir, sends INITBIDIR and checks if a response
+            telegram is received. If so exits with aoresult_ok.
+            If no telegram received in this case either, exits with
+            aoresult_sys_cabling.
 */
 aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop) {
   aoresult_t result;
-  uint16_t   last2;
-  uint8_t    temp;
-  uint8_t    stat;
+  uint16_t   last_;
+  uint8_t    temp_;
+  uint8_t    stat_;
 
   // Set "fail" values for output parameters
-  *last=0x000;  
-  *loop=-1; 
-  
-  // Check arguments
-  if( last==0 ) return aoresult_outargnull;
-  if( loop==0 ) return aoresult_outargnull;
-    
+  aoosp_exec_resetinit_last_= 0;
+  if( last ) *last= 0x000;
+  if( loop ) *loop= -1;
+
   // First, try RESET for INITLOOP
   result= aoosp_send_reset(0x000);
   delayMicroseconds(150);
@@ -66,10 +78,11 @@ aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop) {
 
   // Try INITLOOP (recall to set mux)
   aospi_dirmux_set_loop();
-  result= aoosp_send_initloop(0x001,&last2,&temp,&stat);
+  result= aoosp_send_initloop(0x001,&last_,&temp_,&stat_);
   if( result==aoresult_ok ) {
-    *last=last2;  
-    *loop=1; 
+    aoosp_exec_resetinit_last_= last_;
+    if( last ) *last= last_;
+    if( loop ) *loop= 1;
     return result;
   }
   if( result!=aoresult_spi_noclock ) return result;
@@ -80,16 +93,30 @@ aoresult_t aoosp_exec_resetinit(uint16_t *last, int *loop) {
   if( result!=aoresult_ok ) return result;
 
   // Try INITBIDIR (recall to set mux)
-  aospi_dirmux_set_bidir(); 
-  result= aoosp_send_initbidir(0x001,&last2,&temp,&stat);
+  aospi_dirmux_set_bidir();
+  result= aoosp_send_initbidir(0x001,&last_,&temp_,&stat_);
   if( result==aoresult_ok ) {
-    *last=last2;  
-    *loop=0; 
+    aoosp_exec_resetinit_last_= last_;
+    if( last ) *last= last_;
+    if( loop ) *loop= 0;
     return result;
   }
   if( result!=aoresult_spi_noclock ) return result;
 
   return aoresult_sys_cabling;
+}
+
+
+/*!
+    @brief  Returns the address of the last node as determined by the
+            last call to aoosp_exec_resetinit().
+    @return address of the last node (that is, the total number of nodes)
+    @note   As a side effect of calling aoosp_exec_resetinit(), the
+            address of the last node is recorded and available for later 
+            use through this function.
+*/
+uint16_t aoosp_exec_resetinit_last() {
+  return aoosp_exec_resetinit_last_;
 }
 
 
@@ -104,7 +131,7 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
   #define OTPSTEP 8
   aoresult_t result;
   uint8_t    otp[OTPSIZE];
-  
+
   // Switch logging off temporarily
   aoosp_loglevel_t prev_log_level= aoosp_loglevel_get();
   aoosp_loglevel_set(aoosp_loglevel_none);
@@ -140,23 +167,23 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
 
 // Notes on OTP
 // ============
-// 
+//
 // - SETOTP can only write blocks of 7 bytes, no more, no less
 // - SETOTP (and READOTP) have the memory payload in big endian, whereas C-byte arrays are in little endian
 // - Addresses beyond the OTP size (beyond 0x1F) are ignored for write, and read as 0x00 (so no wrap-around).
-// 
+//
 // - SETOTP doesn't write to OTP, rather it writes to its mirror (in P2RAM).
 // - The OTP mirror is initialized (copied) from OTP at startup (POR - Power On Reset).
 // - The OTP mirror is non-persistent over power-cycles.
 // - The OTP mirror is persistent over RESET telegram.
-// 
+//
 // - SETOTP only works when the correct password is first sent using SETTESTPW.
 // - Without the password set, the SETOTP does not update the OTP mirror.
 // - With the password set, the SAID is in "authenticated" mode.
 // - When SAID is authenticated, the SETOTP does update the OTP mirror, but not (yet) the OTP.
 // - When SAID is authenticated not all telegrams can pass it: some get garbled, making it impossible to reach nodes further on.
 // - It is advised to leave authenticated mode; set an incorrect password (eg TESTPW with 0) to prevent garbling.
-// 
+//
 // - To actually update the OTP, write all the values that must be burned in the OTP mirror as described above.
 // - Then send the CUST telegram, lower voltage, send the BURN telegram, wait ~5 ms, send the IDLE telegram.
 // - OTP bits can only be updated to 1, never (back) to 0.
@@ -178,7 +205,7 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
     @param  andmask
             A mask applied ("anded") first to old value
     @return aoresult_ok if all ok, otherwise an error code.
-    @note   The OTP mirror allows bits to be changed to 0; but when the OTP 
+    @note   The OTP mirror allows bits to be changed to 0; but when the OTP
             mirror is burned to OTP, a 1-bit in OTP stays at 1.
             So it might be wise to keep andmask to 0xFF.
     @note   The write is not to the OTP, but to the OTP mirror in device RAM.
@@ -277,7 +304,7 @@ aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
 
 
 /*!
-    @brief  Checks the address SAID if its OTP has the I2C bridge feature 
+    @brief  Checks the address SAID if its OTP has the I2C bridge feature
             enabled, if so, powers the I2C bus.
     @param  addr
             The address to send the telegram to (unicast).
@@ -287,14 +314,14 @@ aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
 aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
   int        enable;
   aoresult_t result;
-  
+
   // Retrieve from OTP if I2C bridging is enabled
   result = aoosp_exec_i2cenable_get(addr,&enable);
   if( result!=aoresult_ok ) return result;
   // Check the OTP bit
-  if( !enable ) return aoresult_dev_noi2cbridge; 
+  if( !enable ) return aoresult_dev_noi2cbridge;
   // Power the bus
-  result = aoosp_send_setcurchn(addr, /*chan*/2, /*flags*/0, 4, 4, 4); 
+  result = aoosp_send_setcurchn(addr, /*chan*/2, /*flags*/0, 4, 4, 4);
   // Return result
   return result;
 }
@@ -337,7 +364,7 @@ aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable) {
     @note   The write is not to the OTP, but to the OTP mirror in device RAM.
             The mirror is initialized with the OTP content on power on reset.
             The mirror is not re-initialized by a RESET telegram.
-    @note   When the OTP bit SYNC_PIN_EN is set, a SAID uses B1 (the 
+    @note   When the OTP bit SYNC_PIN_EN is set, a SAID uses B1 (the
             channel 1 blue driver) as input for a SYNC trigger (instead
             of using a sync telegram).
 */
@@ -354,7 +381,7 @@ aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable) {
 
 
 /*!
-    @brief  Writes `count` bytes from `buf`, into register `raddr` in I2C 
+    @brief  Writes `count` bytes from `buf`, into register `raddr` in I2C
             device `daddr7`, attached to OSP node `addr`.
     @param  addr
             The address to send the telegram to (unicast).
@@ -395,7 +422,7 @@ aoresult_t aoosp_exec_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
 
 
 /*!
-    @brief  Reads `count` bytes into `buf`, from register `raddr` in I2C 
+    @brief  Reads `count` bytes into `buf`, from register `raddr` in I2C
             device `daddr7`, attached to OSP node `addr`.
     @param  addr
             The address to send the telegram to (unicast).

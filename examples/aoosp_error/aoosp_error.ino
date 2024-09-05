@@ -42,7 +42,7 @@ In Arduino select board "ESP32S3 Dev Module".
 
 OUTPUT
 Welcome to aoosp_error.ino
-version: result 0.1.10 spi 0.2.8 osp 0.2.2
+version: result 0.4.0 spi 0.5.0 osp 0.4.0
 
 spi: init
 osp: init
@@ -91,9 +91,7 @@ const uint8_t setmult_001_08_err[] = {0xA0, 0x05, 0x0D, 0x00, 0x08, 1+0x99}; // 
 
 void reset_to_green() {
   aoresult_t result;
-  uint16_t   last;
-  int        loop;
-  result= aoosp_exec_resetinit(&last,&loop); CHECK_RESULT("resetinit"); // restart entire chain
+  result= aoosp_exec_resetinit(); CHECK_RESULT("resetinit"); // restart entire chain
   result= aoosp_send_clrerror(0x000); CHECK_RESULT("clrerror"); // SAIDs have the V flag after boot, clear those
   result= aoosp_send_goactive(0x000); CHECK_RESULT("goactive"); // Switch all nodes (broadcast) to active (allowing to switch on LEDs).
   result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/); CHECK_RESULT("setpwmchn"); // Set channel 0 of first SAID to green

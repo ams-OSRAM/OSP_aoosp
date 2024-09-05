@@ -125,16 +125,16 @@ The headers contain little documentation; for that see the module source files.
 
 ### aoosp_crc
 
-- `aoosp_crc()` the only function implemented in this modules; computes the CRC of a byte array.
+- `aoosp_crc(...)` the only function implemented in this modules; computes the CRC of a byte array.
 
 
 ### aoosp_prt
 
 Contains several functions to print telegram fields more user friendly. Examples are:
 
-- `aoosp_prt_temp_said()` to convert a SAID raw temperature to Celsius.
-- `aoosp_prt_stat_state()` to convert a node stat to a string describing the power state.
-- `aoosp_prt_bytes()` to convert a byte array (like a telegram) to a string.
+- `aoosp_prt_temp_said(...)` to convert a SAID raw temperature to Celsius.
+- `aoosp_prt_stat_state(...)` to convert a node stat to a string describing the power state.
+- `aoosp_prt_bytes(...)` to convert a byte array (like a telegram) to a string.
 - ...
 
 These functions are publicly accessible, but are intended for logging in this library.
@@ -153,15 +153,15 @@ can be used at a time. For example this will _not_ work:
 This is the core of the library. In principle it contains one function per telegram type.
 Examples are
 
-- `aoosp_send_reset()` resets all nodes in the chain (all "off"; they also lose their address).
-- `aoosp_send_initloop()` assigns an address to each node; also configures all nodes for Loop.
-- `aoosp_send_clrerror()` clears the error flags of the addressed node.
-- `aoosp_send_goactive()` switches the power state of the addressed node to active ("on").
-- `aoosp_send_setpwmchn()` configures the PWM settings of one channel of the addressed node ("lit").
+- `aoosp_send_reset(addr)`         resets all nodes in the chain (all "off"; they also lose their address).
+- `aoosp_send_initloop(addr,...)`  assigns an address to each node; also configures all nodes for Loop.
+- `aoosp_send_clrerror(addr)`      clears the error flags of the addressed node.
+- `aoosp_send_goactive(addr)`      switches the power state of the addressed node to active ("on").
+- `aoosp_send_setpwmchn(addr,...)` configures the PWM settings of one channel of the addressed node ("lit").
 - ...
 
 This module supports logging. 
-Via `aoosp_loglevel_set()` and `aoosp_loglevel_get()` the log level can be managed:
+Via `aoosp_loglevel_set(level)` and `aoosp_loglevel_get()` the log level can be managed:
 
 - `aoosp_loglevel_none` nothing is logged (default).
 - `aoosp_loglevel_args` logging of sent and received telegram arguments.
@@ -173,20 +173,28 @@ Via `aoosp_loglevel_set()` and `aoosp_loglevel_get()` the log level can be manag
 Some operations on OSP nodes require multiple telegrams.
 Some frequent ones have been abstracted in this module.
 
-- `aoosp_exec_resetinit()`         sends RESET and INIT telegrams, auto detecting BiDir or Loop.
-- `aoosp_exec_otpdump()`           reads the entire OTP (mirror) and prints details requested in flags.
-- `aoosp_exec_setotp()`            updates one byte in the OTP (mirror).
-- `aoosp_exec_i2cenable_get()`     reads the I2C_BRIDGE_EN bit in OTP (mirror).
-- `aoosp_exec_i2cenable_set()`     writes the I2C_BRIDGE_EN bit in OTP (mirror).
-- `aoosp_exec_i2cpower()`          checks if the SAID has an I2C bridge, if so, powers the I2C bus.
-- `aoosp_exec_syncpinenable_get()` reads the SYNC_PIN_EN bit from OTP (mirror).
-- `aoosp_exec_syncpinenable_set()` writes the SYNC_PIN_EN bit to OTP (mirror).
-- `aoosp_exec_i2cwrite8()`         writes to an I2C device connected to a SAID with I2C bridge.
-- `aoosp_exec_i2cread8()`          reads from an I2C device connected to a SAID with I2C bridge.
+- `aoosp_exec_resetinit()`            sends RESET and INIT telegrams, auto detecting BiDir or Loop.
+- `aoosp_exec_resetinit_last()`       returns the address of the last node as determined by the last call to `aoosp_exec_resetinit()`.
+- `aoosp_exec_otpdump(...)`           reads the entire OTP (mirror) and prints details requested in flags.
+- `aoosp_exec_setotp(...)`            updates one byte in the OTP (mirror).
+- `aoosp_exec_i2cenable_get(...)`     reads the I2C_BRIDGE_EN bit in OTP (mirror).
+- `aoosp_exec_i2cenable_set(...)`     writes the I2C_BRIDGE_EN bit in OTP (mirror).
+- `aoosp_exec_i2cpower(...)`          checks if the SAID has an I2C bridge, if so, powers the I2C bus.
+- `aoosp_exec_syncpinenable_get(...)` reads the SYNC_PIN_EN bit from OTP (mirror).
+- `aoosp_exec_syncpinenable_set(...)` writes the SYNC_PIN_EN bit to OTP (mirror).
+- `aoosp_exec_i2cwrite8(...)`         writes to an I2C device connected to a SAID with I2C bridge.
+- `aoosp_exec_i2cread8(...)`          reads from an I2C device connected to a SAID with I2C bridge.
 
 
 ## Version history _aoosp_
 
+- **2024 sep 5, 0.4.1**
+  - API section in readme now shows parameter names.
+  - Added `aoosp_exec_resetinit_last()`.
+  - Made output parameters of `aoosp_exec_resetinit()` optional (adapted an example).
+  - Bug fix: when `aoosp_exec_resetinit` had NULL for output parameters they were still assigned.
+  - Bug fix: changed `AOOSP_ADDR_NOTNIT` to `AOOSP_ADDR_UNINIT` in `AOOSP_ADDR_GROUP`.
+  
 - **2024 aug 28, 0.4.0**
   - Renamed/split `AOOSP_ADDR_MIN|MAX` to `AOOSP_ADDR_UNICASTMIN|MAX` and `AOOSP_ADDR_GLOBALMIN|MAX`.
   - Added `AOOSP_OTPADDR_CUSTOMER_MIN|MAX`.

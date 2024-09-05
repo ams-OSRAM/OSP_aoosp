@@ -75,7 +75,7 @@
 #define AOOSP_ADDR_GROUP12               ( 0x3FC )
 #define AOOSP_ADDR_GROUP13               ( 0x3FD )
 #define AOOSP_ADDR_GROUP14               ( 0x3FE )
-#define AOOSP_ADDR_GROUP(n)              ( (n)<0 || (n)>14 ? AOOSP_ADDR_NOTINIT : AOOSP_ADDR_GROUP0+(n) ) // map illegal group n to illegal address
+#define AOOSP_ADDR_GROUP(n)              ( (n)<0 || (n)>14 ? AOOSP_ADDR_UNINIT : AOOSP_ADDR_GROUP0+(n) ) // map illegal group n to illegal address
 
 #define AOOSP_ADDR_UNINIT                ( 0x3FF )
 
