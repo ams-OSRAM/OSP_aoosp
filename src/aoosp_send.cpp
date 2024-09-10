@@ -256,7 +256,7 @@ static aoresult_t aoosp_con_clrerror(aoosp_tele_t * tele, uint16_t addr) {
     @brief  Sends a CLRERROR telegram.
             This clears the error flags of the addressed node.
     @param  addr
-            The address to send the telegram to 
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When error flags are set, a node will not go active.
@@ -339,7 +339,7 @@ static aoresult_t aoosp_des_initbidir(aoosp_tele_t * tele, uint16_t * last, uint
             This assigns an address to each node.
             Also configures all nodes for BiDir - they send response backward.
     @param  addr
-            The address to send the telegram to, use 1 (serialcast).
+            The address to send the telegram to, typically use 1 (serialcast).
     @param  last
             Output parameter returning the address of 
             the last node - that is the chain length.
@@ -441,7 +441,7 @@ static aoresult_t aoosp_des_initloop(aoosp_tele_t * tele, uint16_t * last, uint8
             This assigns an address to each node.
             Also configures all nodes for Loop - they send response forward.
     @param  addr
-            The address to send the telegram to, use 1 (serialcast).
+            The address to send the telegram to, typically use 1 (serialcast).
     @param  last
             Output parameter returning the address of 
             the last node - that is the chain length.
@@ -525,7 +525,7 @@ static aoresult_t aoosp_con_gosleep(aoosp_tele_t * tele, uint16_t addr) {
             This switches the state of the addressed node to sleep 
             (switching off all LEDs).
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
@@ -590,7 +590,7 @@ static aoresult_t aoosp_con_goactive(aoosp_tele_t * tele, uint16_t addr) {
             This switches the state of the addressed node to active 
             (allowing to switch on LEDs).
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
@@ -850,7 +850,7 @@ static aoresult_t aoosp_con_setmult(aoosp_tele_t * tele, uint16_t addr, uint16_t
     @brief  Sends a SETMULT telegram.
             Assigns the addressed node to zero or more of the 15 groups.
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for a group).
     @param  groups
             The LSB 15 bits indicate if the node is assigned to that group.
@@ -1256,7 +1256,7 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
     @brief  Sends a I2CREAD telegram (datasheet: I2C_READ).
             This requests a SAID to master a read on its I2C bus.
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast),
             (theoretically use 0 for broadcast, or 3F0..3FE for group).
     @param  daddr7
             The 7 bits I2C device address used in mastering the read.
@@ -1341,7 +1341,7 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
     @brief  Sends a I2CWRITE telegram (datasheet: I2C_WRITE).
             This requests a SAID to master a write on its I2C bus.
     @param  addr
-            The address to send the telegram to.
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  daddr7
             The 7 bits I2C device address used in mastering the write.
@@ -1543,8 +1543,7 @@ static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uin
     @brief  Sends an GOACTIVE_SR telegram and receives its status response.
             This switches the state of the addressed node to active (allowing to switch on LEDs).
     @param  addr
-            The address to send the telegram to.
-            (use 0 for broadcast, or 3F0..3FE for group).
+            The address to send the telegram to (unicast).
     @param  temp
             Output parameter returning the raw temperature of the addressed node.
     @param  stat
@@ -1655,7 +1654,7 @@ static aoresult_t aoosp_des_readstat(aoosp_tele_t * tele, uint8_t * stat) {
 
 
 /*!
-    @brief  Sends a READSTAT telegram and receives its response (datasheet: READST or READSTATUS).
+    @brief  Sends a READSTAT telegram and receives its response.
             Asks the addressed node to respond with its (system) status.
     @param  addr
             The address to send the telegram to (unicast).
@@ -1749,8 +1748,9 @@ static aoresult_t aoosp_des_readtempstat(aoosp_tele_t * tele, uint8_t * temp, ui
 
 
 /*!
-    @brief  Sends a READTEMPSTAT telegram and receives its response (datasheet: READTEMPST).
-            Asks the addressed node to respond with its temperature and (system) status.
+    @brief  Sends a READTEMPSTAT telegram and receives its response.
+            Asks the addressed node to respond with its temperature 
+            and (system) status.
     @param  addr
             The address to send the telegram to (unicast).
     @param  temp
@@ -2116,7 +2116,7 @@ static aoresult_t aoosp_con_setsetup(aoosp_tele_t * tele, uint16_t addr, uint8_t
     @brief  Sends a SETSETUP telegram.
             Sets the setup of the addressed node (e.g. CRC check enabled).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @param  flags
             The new setup of the addressed node.
@@ -2199,7 +2199,8 @@ static aoresult_t aoosp_des_readpwm(aoosp_tele_t * tele, uint16_t *red, uint16_t
 
 /*!
     @brief  Sends a READPWM telegram and receives its response.
-            Asks the addressed node to respond with its PWM settings (single channel nodes).
+            Asks the addressed node to respond with its PWM settings
+            (for single channel nodes).
     @param  addr
             The address to send the telegram to (unicast).
     @param  red
@@ -2302,8 +2303,9 @@ static aoresult_t aoosp_des_readpwmchn(aoosp_tele_t * tele, uint16_t *red, uint1
 
 
 /*!
-    @brief  Sends a READPWMCHN telegram and receives its response(datasheet: READPWM_CHN).
-            Asks the addressed node to respond with its PWM settings of one of its channel.
+    @brief  Sends a READPWMCHN telegram and receives its response.
+            Asks the addressed node to respond with its PWM settings 
+            of one of its channel.
     @param  addr
             The address to send the telegram to (unicast).
     @param  chn
@@ -2398,9 +2400,10 @@ static aoresult_t aoosp_con_setpwm(aoosp_tele_t * tele, uint16_t addr, uint16_t 
 
 /*!
     @brief  Sends a SETPWM telegram.
-            Configures the PWM settings of the addressed node (single channel nodes).
+            Configures the PWM settings of the addressed node 
+            (for single channel nodes).
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @param  red
             The PWM setting for red (15 bit).
@@ -2485,10 +2488,10 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 /*!
-    @brief  Sends a SETPWMCHN telegram (datasheet: SETPWM_CHN).
+    @brief  Sends a SETPWMCHN telegram.
             Configures the PWM settings of one channel of the addressed node.
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @param  red
             The PWM setting for red (16 bit).
@@ -2582,8 +2585,9 @@ static aoresult_t aoosp_des_readcurchn(aoosp_tele_t * tele, uint8_t *flags, uint
 
 
 /*!
-    @brief  Sends a READCURCHN telegram and receives its response (datasheet: READ_CUR_CH).
-            Asks the addressed node to respond with the current levels of the specified channel.
+    @brief  Sends a READCURCHN telegram and receives its response.
+            Asks the addressed node to respond with the current 
+            levels of the specified channel.
     @param  addr
             The address to send the telegram to (unicast).
     @param  chn
@@ -2676,10 +2680,11 @@ static aoresult_t aoosp_con_setcurchn(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 /*!
-    @brief  Sends a SETCURCHN telegram (datasheet: SET_CUR_CH).
-            Configures the current levels of the addressed node for the specified channel.
+    @brief  Sends a SETCURCHN telegram.
+            Configures the current levels of the addressed node for the 
+            specified channel.
     @param  addr
-            The address to send the telegram to 
+            The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
     @param  chn
             The channel of the node for which the current levels are requested.
@@ -2773,8 +2778,7 @@ static aoresult_t aoosp_des_readi2ccfg(aoosp_tele_t * tele, uint8_t *flags, uint
 
 
 /*!
-    @brief  Sends a READI2CCFG telegram and receives its response
-            (datasheet: READ_I2C_CFG, aka as I2C status).
+    @brief  Sends a READI2CCFG telegram and receives its response.
             Asks the addressed node to respond with the I2C configuration/status.
     @param  addr
             The address to send the telegram to (unicast).
@@ -2838,7 +2842,7 @@ static aoresult_t aoosp_con_seti2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_
 
   // Set constants
   const uint8_t payloadsize = 1;
-  const uint8_t tid = 0x4D; // SETI2CCFG
+  const uint8_t tid = 0x57; // SETI2CCFG
   //if( respsize ) *respsize = 4+0;
 
   // Build telegram
@@ -2857,10 +2861,10 @@ static aoresult_t aoosp_con_seti2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 /*!
-    @brief  Sends a SETI2CCFG telegram (datasheet: WRITE_I2C_CFG, aka as I2C status).
+    @brief  Sends a SETI2CCFG telegram.
             Sets the I2C configuration/status of the addressed node.
     @param  addr
-            The address to send the telegram to 
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  flags
             The 4 bit I2C configuration flags.
@@ -3053,7 +3057,7 @@ static aoresult_t aoosp_con_setotp(aoosp_tele_t * tele, uint16_t addr, uint8_t o
     @brief  Sends a SETOTP telegram.
             Writes bytes to the OTP memory of the addressed node.
     @param  addr
-            The address to send the telegram to
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  otpaddr
             The address of the OTP memory.
@@ -3141,10 +3145,10 @@ static aoresult_t aoosp_con_settestdata(aoosp_tele_t * tele, uint16_t addr, uint
 
 
 /*!
-    @brief  Sends a SETTESTDATA telegram (datasheet: TESTDATASET).
+    @brief  Sends a SETTESTDATA telegram.
             Sets the test register of the addressed node.
     @param  addr
-            The address to send the telegram to 
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  data
             The 16 bit test data.
@@ -3220,10 +3224,10 @@ static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64
 
 
 /*!
-    @brief  Sends a SETTESTPW telegram (datasheet: TESTPW).
+    @brief  Sends a SETTESTPW telegram.
             Sets the password of the addressed node.
     @param  addr
-            The address to send the telegram to 
+            The address to send the telegram to (unicast),
             (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  pw
             The 48 bit password.

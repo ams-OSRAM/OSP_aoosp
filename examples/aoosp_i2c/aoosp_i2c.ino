@@ -32,16 +32,24 @@ Finally it polls the INT line and shows its status on SAID1.RGB0.
 HARDWARE
 The demo runs on the OSP32 board. Have a cable from the OUT connector to 
 the IN connector so that both SAIDs are in the chain.
-The OSP32 board has an I2C device (EEPROM) attached to the first SAID,
-and it is possible to plug in other (5V) I2C devices (like an EEPROM stick) 
-in the I2C connector of the OSP32 board. OSP32 als has a pushbutton 
-connected to the INT line of the SAID with I2C bridge. 
+The SAID OUT on the OSP32 board is enabled for I2C. On the OSP32 board an I2C 
+device (EEPROM) is attached to it. One could attach other I2C devices, like 
+the supplied EEPROM stick, via the header labeled "I2C".
+The first phase of this demo, scans for all connected I2C devices on the bus 
+(it finds at least the EEPROM). The second phase writes/reads the connected 
+EEPROM. The OSP32 board has a pushbutton connected to the INT line of the 
+SAID with I2C bridge. In the third phase, pressing the push button instructs
+the firmware to change the color of an LED.
 In Arduino select board "ESP32S3 Dev Module".
 
+BEHAVIOR
+During the I2C scan or the EEPROM test, there is no visible behavior.
+During the third phase the first RGB (L1.0) of SAID OUT is green
+except while the INT button is depressed, then it is red.
+
 OUTPUT
-(press the INT button in the third demo)
 Welcome to aoosp_i2c.ino
-version: result 0.1.7 spi 0.2.4 osp 0.1.16
+version: result 0.4.1 spi 0.5.1 osp 0.4.1
 spi: init
 osp: init
 
@@ -58,7 +66,7 @@ Bus scan for SAID 001
 38:  38  39  3a  3b  3c  3d  3e  3f 
 40:  40  41  42  43  44  45  46  47 
 48:  48  49  4a  4b  4c  4d  4e  4f 
-50: [50] 51  52  53  54  55  56  57 
+50:  50  51  52  53 [54] 55  56  57 
 58:  58  59  5a  5b  5c  5d  5e  5f 
 60:  60  61  62  63  64  65  66  67 
 68:  68  69  6a  6b  6c  6d  6e  6f 
@@ -68,21 +76,21 @@ SAID 001 has 1 I2C devices (see square brackets)
 
 resetinit last 002 loop
 
-Read/write (to EEPROM 50 on SAID 001)
-eeprom 00 0E 49 0E 92 0E DB 0E
-eeprom 00 0E BE EF 92 0E DB 0E
-eeprom 00 0E 49 0E 92 0E DB 0E
+Read/write (locations 00..07 of EEPROM 54 on SAID 001)
+eeprom FF FF FF FF FF FF FF FF (original)
+eeprom FF FF BE EF FF FF FF FF (written)
+eeprom FF FF FF FF FF FF FF FF (restored)
 
 resetinit last 002 loop
 
-Polling INT pin (on SAID 001)
+Press INT button and check L1.0
 */
 
 
 // OSP node address of the SAID to use for I2C
 #define ADDR    0x001 // OSP32 has SAID1 with I2C on addr 001
 // I2C device address
-#define DADDR   0x50 // OSP32 has EEPROM with this address on SAID1
+#define DADDR   0x54 // OSP32 has EEPROM with this address on SAID1
 
 
 // Print a table of all I2C device addresses that acknowledge a read
@@ -111,6 +119,7 @@ void i2c_scan() {
   // Scan all devices
   Serial.printf("\nBus scan for SAID %03X\n",ADDR);
   int count= 0;
+  int found= 0;
   for( uint8_t daddr7=0; daddr7<0x80; daddr7++ ) {
     if( daddr7 % 8 == 0) Serial.printf("%02x: ",daddr7);
     // Try to read at address 0 of device daddr7
@@ -119,10 +128,12 @@ void i2c_scan() {
     int i2cfail=  result==aoresult_dev_i2cnack || result==aoresult_dev_i2ctimeout;
     if( result!=aoresult_ok && !i2cfail )  { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
     if( i2cfail ) Serial.printf(" %02x ",daddr7); else Serial.printf("[%02x]",daddr7); // [] brackets indicate presence
+    if( !i2cfail && daddr7==DADDR ) found++;
     if( !i2cfail ) count++;
     if( daddr7 % 8 == 7) Serial.printf("\n");
   }
   Serial.printf("SAID %03X has %d I2C devices (see square brackets)\n", ADDR, count);
+  if( !found ) Serial.printf("WARNING: expect I2C device with address %02X, but did find any\n",DADDR);
 
   Serial.printf("\n");
 }
@@ -150,13 +161,22 @@ void i2c_eeprom() {
   result= aoosp_exec_i2cenable_get(ADDR,&enable);
   if( result!=aoresult_ok || !enable ) { Serial.printf("ERROR: there doesn't seem to be a SAID with I2C enabled at %03X (%s)\n",ADDR,aoresult_to_str(result)); return; }
 
-  Serial.printf("\nRead/write (to EEPROM %02X on SAID %03X)\n",DADDR,ADDR);
+//uint8_t flags, rcur, gcur, bcur;
+//result= aoosp_send_readcurchn(ADDR, 2, &flags, &rcur, &gcur, &bcur);
+//if( result!=aoresult_ok ) { Serial.printf("readcurchn %s\n", aoresult_to_str(result) ); return; }
+//Serial.printf("readcurchn: flags %02X rgb %02X %02X %02X\n", flags, rcur, gcur, bcur);
+
+  // Power the I2C bus
+  result= aoosp_exec_i2cpower(ADDR);
+  if( result!=aoresult_ok ) { Serial.printf("i2cpower %s\n", aoresult_to_str(result) ); return; }
+
+  Serial.printf("\nRead/write (locations 00..07 of EEPROM %02X on SAID %03X)\n",DADDR,ADDR);
   // Dump the first 8 bytes of the I2C EEPROM memory
   result= aoosp_exec_i2cread8(ADDR, DADDR, 0x00, rbuf1, 8); 
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf1[i]);
-  Serial.printf("\n");
+  Serial.printf(" (original)\n");
 
   // Modify bytes 2 and 3 of the I2C EEPROM memory
   wbuf[0]= 0xBE; wbuf[1]=0xEF;
@@ -168,7 +188,7 @@ void i2c_eeprom() {
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf2[i]);
-  Serial.printf("\n");
+  Serial.printf(" (written)\n");
 
   // Restore bytes 2 and 3 of the I2C EEPROM memory
   wbuf[0]= rbuf1[2]; wbuf[1]=rbuf1[3];
@@ -180,14 +200,14 @@ void i2c_eeprom() {
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf2[i]);
-  Serial.printf("\n");
+  Serial.printf(" (restored)\n");
 
   Serial.printf("\n");
 }
 
 
 // Poll the INT pin
-#define LEDADDR 0x001
+#define ADDR_LED 0x001
 void i2c_int_setup() {
   aoresult_t result;
   int        enable;
@@ -210,11 +230,14 @@ void i2c_int_setup() {
   result= aoosp_exec_i2cpower(ADDR);
   if( result!=aoresult_ok ) { Serial.printf("i2cpower %s\n", aoresult_to_str(result) ); return; }
 
-  // Prepare SAID at LEDADDR for feedback (clear its errors and go active)
-  result= aoosp_send_clrerror(LEDADDR); 
+  // Prepare SAID at ADDR_LED for feedback (clear its errors and go active)
+  result= aoosp_send_clrerror(ADDR_LED); 
   if( result!=aoresult_ok ) { Serial.printf("clrerror %s\n", aoresult_to_str(result) ); return; }
-  result= aoosp_send_goactive(LEDADDR);
+  result= aoosp_send_goactive(ADDR_LED);
   if( result!=aoresult_ok ) { Serial.printf("goactive %s\n", aoresult_to_str(result) ); return; }
+
+  // Instruct user
+  Serial.printf("\nPress INT button and check L1.0\n");
 }
 
 
@@ -226,12 +249,14 @@ void i2c_int_loop() {
   if( result!=aoresult_ok ) { Serial.printf("readi2ccfg %s\n", aoresult_to_str(result) ); return; }
   uint8_t intstate= flags & AOOSP_I2CCFG_FLAGS_INT;
   if( intstate ) {
-    result= aoosp_send_setpwmchn(LEDADDR, 0/*chn*/, 0x7FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
+    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x7FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
     if( result!=aoresult_ok ) { Serial.printf("setpwmchn %s\n", aoresult_to_str(result) ); return; }
   } else {
-    result= aoosp_send_setpwmchn(LEDADDR, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/);
+    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/);
     if( result!=aoresult_ok ) { Serial.printf("setpwmchn %s\n", aoresult_to_str(result) ); return; }
   }
+
+  delay(1);
 }
 
 

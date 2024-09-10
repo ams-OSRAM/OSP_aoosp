@@ -64,7 +64,8 @@ File > Examples > OSP Telegrams aoosp > ...
 - **aoosp_otp** ([source](examples/aoosp_otp))  
   This demo reads and writes from/to the OTP (one time programmable 
   memory) of a SAID.
-
+  The _OTP password must be known and enabled_ for this example will not work.
+  
 - **aoosp_sync** ([source](examples/aoosp_sync))  
   This demo shows how to use the SYNC feature; a feature that switches on all 
   LEDs at the same time. We first enable (channels) of nodes for SYNC
@@ -187,6 +188,19 @@ Some frequent ones have been abstracted in this module.
 
 
 ## Version history _aoosp_
+
+- **2024 sep 10, 0.4.2**
+  - Fixed TID bug in `aoosp_con_seti2ccfg()`.
+  - `aoosp_exec_i2cpower(addr)` now also checks if addr is a SAID.
+  - Detailed addressing for `aoosp_send_xxx()` and removed old datasheet names.
+  - Corrected documentation on <addr> in `aoosp_exec_xxx()` functions.
+  - Added topology check to `aoosp-time.ino`.
+  - Added explanation for SYNC via pin in `aoosp_sync.ino`.
+  - Added remark on OTP password for `aoosp_otp.ino`.
+  - I2C in `aoop_i2c.ino` description updated and device address changed to match OSP32.
+  - Now also powering I2C bus in `aoosp_i2c.ino` for EEPROM.
+  - Role of 'mult' in `aoosp_error.ino` explained.
+  - Added BEHAVIOR section to explanation in examples.
 
 - **2024 sep 5, 0.4.1**
   - API section in readme now shows parameter names.

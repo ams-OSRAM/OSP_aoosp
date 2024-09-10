@@ -33,22 +33,23 @@ The demo runs on the OSP32 board. Have a cable from the OUT connector to
 the IN connector so that both SAIDs are in the chain.
 In Arduino select board "ESP32S3 Dev Module".
 
+BEHAVIOR
+The first RGB (L1.0) of SAID OUT and the first RGB of the next SAID
+blink: first both red then both green then repeats.
+
 OUTPUT
 Welcome to aoosp_group.ino
-version: result 0.1.10 spi 0.2.8 osp 0.2.2
+version: result 0.4.1 spi 0.5.1 osp 0.4.1
 
 spi: init
 osp: init
 
 reset(0) ok
-initloop(1) ok last 002
+initloop(1) ok last 009
 clrerror(0) ok
 goactive(0) ok
 setmult(1,grp5) ok
 setmult(2,grp5) ok
-
-setpwmchn(grp5,0,red) ok
-setpwmchn(grp5,0,grn) ok
 
 setpwmchn(grp5,0,red) ok
 setpwmchn(grp5,0,grn) ok

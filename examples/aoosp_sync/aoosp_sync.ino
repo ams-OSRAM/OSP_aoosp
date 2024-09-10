@@ -35,13 +35,21 @@ Instead of sending a SYNC telegram, there is also the option to use the
 SYNC pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC
 and on the OSP32 board have jumper J8 connect SAID2.B2 to the ESP32 GPIO9
 (instead of LED L2.1_B). Only SAID2 is wired for hardware sync on OSP32.
+For this OTP must be written, so OTP password must be known and installed.
 
-HARDWARE
+HARDWARE-1
 The demo should run on the OSP32 board.
 Have a cable from the OUT connector to the IN connector. 
+**The jumper S2-B1 should connect to L2.1-B (default)**
 In Arduino select board "ESP32S3 Dev Module".
 
-OUTPUT
+BEHAVIOR-1
+The serial monitor shows that SAID-1 channel-0 (L1.0) is set to green, 
+but it does not yet light up on the board. Next, the Serial monitor shows 
+that SAID-2 channel-0 is set to blue, but also this one does not light up.
+When the serial monitor shows "SYNC via telegram" both light up in sync.
+
+OUTPUT-1
 Welcome to aoosp_sync.ino
 version: result 0.1.10 spi 0.2.8 osp 0.2.2
 spi: init
@@ -49,6 +57,26 @@ osp: init
 SAID-1 channel-0 to green
 SAID-2 channel-0 to blue
 SYNC via telegram
+
+
+HARDWARE-2
+**The jumper S2-B1 should connect to 9/SYNC**
+
+BEHAVIOR-2
+The serial monitor shows that SAID-1 channel-0 (L1.0) is set to green, 
+but it does not yet light up on the board. Next, the Serial monitor shows 
+that SAID-2 channel-0 is set to blue, but also this one does not light up.
+When the serial monitor shows "SYNC SAID-2 via pin" SAID-2 lights up blue.
+Note that SAID-1 does not have its SYNC pin connected.
+
+OUTPUT-2
+Welcome to aoosp_sync.ino
+version: result 0.4.1 spi 0.5.1 osp 0.4.1
+spi: init
+osp: init
+SAID-1 channel-0 to green
+SAID-2 channel-0 to blue
+SYNC SAID-2 via pin
 */
 
 
@@ -100,7 +128,7 @@ void demo_sync() {
 
   // Broadcast sync to activate the PWM settings
   #if USE_HARDWARE_SYNC  
-    Serial.printf("SYNC SAID2 via pin\n");
+    Serial.printf("SYNC SAID-2 via pin\n");
     digitalWrite(9,LOW); 
     delayMicroseconds(2); // SYNC pin must be pulsed for at least 3 clock cycles of the device to give a sync
     digitalWrite(9,HIGH); 

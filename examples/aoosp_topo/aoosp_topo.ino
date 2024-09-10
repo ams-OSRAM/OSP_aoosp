@@ -31,13 +31,15 @@ HARDWARE
 The demo should run on the OSP32 board. Either have a terminator in the 
 OUT connector, have a cable from the OUT connector to the IN connector, 
 or connect any OSP demo board in Loop or Bidir mode.
+The below example output uses the SAIDbasic board in loop mode. 
 In Arduino select board "ESP32S3 Dev Module".
 
-OUTPUT
-Note: the OSP32 board has OUT connected to a SAIDbasic board, which loops back to OSP32 IN
+BEHAVIOR
+Nothing to be seen, firmware only retrieves various statuses.
 
+OUTPUT
 Welcome to aoosp_topo.ino
-version: result 0.1.10 spi 0.2.8 osp 0.2.2
+version: result 0.4.1 spi 0.5.1 osp 0.4.1
 spi: init
 osp: init
 

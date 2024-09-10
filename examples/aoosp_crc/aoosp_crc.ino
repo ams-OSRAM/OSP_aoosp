@@ -35,6 +35,9 @@ The demo runs on the OSP32 board, no demo board needs to be attached.
 In Arduino select board "ESP32S3 Dev Module".
 Since this demo does not use any OSP related hardware, any ESP32[S3] will do.
 
+BEHAVIOR
+Nothing to be seen, example only computes CRC.
+
 OUTPUT
 Welcome to aoosp_crc.ino
 buf A0 07 CF 00 FF 08 88 00 11 08 88 00=94 ERROR

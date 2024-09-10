@@ -40,37 +40,44 @@ The demo runs on the OSP32 board. Have a cable from the OUT connector to
 the IN connector so that both SAIDs are in the chain.
 In Arduino select board "ESP32S3 Dev Module".
 
+BEHAVIOR
+During DEMO1 and DEMO2 the first RGB (L1.0) of SAID OUT is green.
+For DEMO3 it switches of.
+
 OUTPUT
 Welcome to aoosp_error.ino
-version: result 0.4.0 spi 0.5.0 osp 0.4.0
+version: result 0.4.1 spi 0.5.1 osp 0.4.1
 
 spi: init
 osp: init
 
+NOTE
+'mult' is used as a harmless write/read scratch register
+
 DEMO1
-condition: CRC checking disabled | CRC trapping disabled | mult 0000 | error flags 00 | status ACTIVE
+condition: CRC checking disabled | CRC trapping disabled | mult 0000 | error flags 00 | status active
 action   : setmult(1) with ok CRC
-condition: CRC checking disabled | CRC trapping disabled | mult 0001 | error flags 00 | status ACTIVE
+condition: CRC checking disabled | CRC trapping disabled | mult 0001 | error flags 00 | status active
 action   : setmult(2) with bad CRC
-condition: CRC checking disabled | CRC trapping disabled | mult 0002 | error flags 00 | status ACTIVE
+condition: CRC checking disabled | CRC trapping disabled | mult 0002 | error flags 00 | status active
 observe  : with 'CRC checking _disabled_' the bad setmult(2) is just accepted
 observe  : no error flags set, status stays ACTIVE, green led stays on
 
 DEMO2
-condition: CRC checking enabled | CRC trapping disabled | mult 0000 | error flags 00 | status ACTIVE
+condition: CRC checking enabled | CRC trapping disabled | mult 0000 | error flags 00 | status active
 action   : setmult(1) with ok CRC
-condition: CRC checking enabled | CRC trapping disabled | mult 0001 | error flags 00 | status ACTIVE
+condition: CRC checking enabled | CRC trapping disabled | mult 0001 | error flags 00 | status active
 action   : setmult(2) with bad CRC
-condition: CRC checking enabled | CRC trapping disabled | mult 0001 | error flags 08 | status ACTIVE
+condition: CRC checking enabled | CRC trapping disabled | mult 0001 | error flags 08 | status active
 observe  : with 'CRC checking _enabled_' the bad setmult(2) is not accepted
 observe  : an error flag is set, but status stays ACTIVE, green led stays on
 
 DEMO3
-condition: CRC checking enabled | CRC trapping enabled | mult 0000 | error flags 00 | status ACTIVE
+condition: CRC checking enabled | CRC trapping enabled | mult 0000 | error flags 00 | status active
 action   : setmult(1) with ok CRC
-condition: CRC checking enabled | CRC trapping enabled | mult 0001 | error flags 00 | status ACTIVE
+condition: CRC checking enabled | CRC trapping enabled | mult 0001 | error flags 00 | status active
 action   : setmult(2) with bad CRC
-condition: CRC checking enabled | CRC trapping enabled | mult 0001 | error flags 08 | status SLEEP
+condition: CRC checking enabled | CRC trapping enabled | mult 0001 | error flags 08 | status sleep
 observe  : with 'CRC checking _enabled_' the bad setmult(2) is not accepted
 observe  : with 'CRC trapping _enabled_' the bad setmult(2) is even trapped
 observe  : an error flag is set, status moved to SLEEP, green led switches off
@@ -183,6 +190,8 @@ void setup() {
 
   aospi_init();
   aoosp_init();
+
+  Serial.printf("\nNOTE\n'mult' is used as a harmless write/read scratch register\n" );
 
   demo1();
   delay(2000);

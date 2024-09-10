@@ -34,6 +34,11 @@ Have a cable from the OUT connector to the IN connector.
 This demo will run alternately in BiDir and Loop mode.
 In Arduino select board "ESP32S3 Dev Module".
 
+BEHAVIOR
+The first RGB (L1.0) of SAID OUT blinks bright white and dim white.
+First in BiDir mode (so direction mux led is green) then in loop (led is orange).
+Then repeats.
+
 OUTPUT
 Welcome to aoosp_min.ino
 version: result 0.1.10 spi 0.2.8 osp 0.2.2

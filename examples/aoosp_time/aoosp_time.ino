@@ -54,13 +54,27 @@ ANALYSES
 In total 42 commands were sent, and 15 responses received, or 57 telegrams in total.
 At 2.4MHz, one 12 bytes (96 bit) telegram takes 40us, so 57 would take 2280us.
 OSP (high level) sends these in ~4980us, and SPI (low level) in ~4940us.
-This difference (software overhead) can be ignored. But practice is twice longer
-than the theory.
+This difference between high level and low level (software overhead) can be ignored. 
+But practice (5000us) is twice longer than the theory (2300us).
 
 We did overestimate payload size (always 12 bytes), but we did not take into accont 
 inter telegram time, telegram forwarding time (along the chain) or telegram 
 execution time (reset, otp). 
 */
+
+
+void test_diag() {
+  uint16_t last;
+  uint8_t temp;
+  uint8_t stat;
+  aoresult_t result;
+  #define CHECK() do { if( result!=aoresult_ok ) Serial.printf("ERROR %s\n",aoresult_to_str(result)); } while(0)
+  aospi_dirmux_set_loop();
+  result= aoosp_send_reset(0x000); CHECK();
+  delayMicroseconds(150);
+  result= aoosp_send_initloop(0x001, &last, &temp, &stat); CHECK();
+  if( last!=9 ) { Serial.printf("WARNING: is SAIDbasic connected in loop?\n"); delay(5000); }
+}
 
 
 void test_spi() {
@@ -192,6 +206,9 @@ void setup() {
   aospi_init();
   aoosp_init();
   Serial.printf("\n");
+
+  // Check for right topo
+  test_diag();
 
   // Flush the ESP caches
   test_spi(); // measure timing os spi level

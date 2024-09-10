@@ -188,7 +188,7 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
 // - Then send the CUST telegram, lower voltage, send the BURN telegram, wait ~5 ms, send the IDLE telegram.
 // - OTP bits can only be updated to 1, never (back) to 0.
 //
-// - Some of the configiration bits (like bit SPI_MODE) are only inspected right after POR, so updating mirror has no effect.
+// - Some of the configuration bits (like bit SPI_MODE) are only inspected right after POR, so updating mirror has no effect.
 
 
 /*!
@@ -197,7 +197,6 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
             then writing the value back to the OTP (mirror).
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  otpaddr
             The address of the OTP memory.
     @param  ormask
@@ -253,12 +252,14 @@ free_resources:
     @brief  Reads the I2C_BRIDGE_EN bit from OTP (mirror).
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             Output parameter returning the value of I2C_BRIDGE_EN.
     @return aoresult_ok if all ok, otherwise an error code.
+    @note   It might be more convenient to use aoosp_exec_i2cpower() 
+            instead of this function. That one also checks that 
+            I2C_BRIDGE_EN is set, and if so, powers the I2C bus, which 
+            is needed anyhow for i2C operations.
     @note   Wrapper around aoosp_send_readotp for easy access.
-    @note   See aoosp_exec_i2cpower.
 */
 aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable) {
   if( enable==0 ) return aoresult_outargnull;
@@ -279,16 +280,18 @@ aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable) {
     @brief  Writes the I2C_BRIDGE_EN bit to OTP (mirror).
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             The new value for I2C_BRIDGE_EN.
     @return aoresult_ok if all ok, otherwise an error code.
     @note   Wrapper around aoosp_exec_setotp for easy access.
-    @note   The write is not to the OTP, but to the OTP mirror in device RAM.
+    @note   The write is not to the OTP, but to the OTP mirror (RAM).
             The mirror is initialized with the OTP content on power on reset.
             The mirror is not re-initialized by a RESET telegram.
     @note   When the OTP bit I2C_BRIDGE_EN is set, a SAID uses channel 2
-            as I2C bridge instead of RGB conntroller.
+            as I2C bridge instead of RGB controller.
+    @note   In real products this function is not used: the I2C_BRIDGE_EN
+            is flashed in the actual OTP at manufacturing time, not in the 
+            set in shadow RAM during runtime.
     @note   See aoosp_exec_i2cpower.
 */
 aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
@@ -304,24 +307,36 @@ aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
 
 
 /*!
-    @brief  Checks the address SAID if its OTP has the I2C bridge feature
+    @brief  Checks the addressed SAID if its OTP has the I2C bridge feature
             enabled, if so, powers the I2C bus.
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
-    @return aoresult_ok if all ok, otherwise an error code.
+    @return aoresult_ok              if all ok
+            aoresult_sys_id          when not a SAID
+            aoresult_dev_noi2cbridge when SAID has no I2C bridge (bit in OTP)
+            other                    telegram error
+    @note   Sets highest power for I2C bus (channel 2).
+            This is safe, but could be lowered to minimize power consumption,
+            depending on RC constant given by pull-up and line capacitance.
 */
 aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
   int        enable;
   aoresult_t result;
+  uint32_t   id;
+  
+  // Check (via IDENTITY) if node addr is a SAID
+  result = aoosp_send_identify(addr, &id );
+  if( result!=aoresult_ok ) return result;
+  if( ! AOOSP_IDENTIFY_IS_SAID(id) ) return aoresult_sys_id;
 
-  // Retrieve from OTP if I2C bridging is enabled
+  // Check (via OTP) if I2C bridging is enabled
   result = aoosp_exec_i2cenable_get(addr,&enable);
   if( result!=aoresult_ok ) return result;
-  // Check the OTP bit
   if( !enable ) return aoresult_dev_noi2cbridge;
+  
   // Power the bus
   result = aoosp_send_setcurchn(addr, /*chan*/2, /*flags*/0, 4, 4, 4);
+  
   // Return result
   return result;
 }
@@ -331,7 +346,6 @@ aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
     @brief  Reads the SYNC_PIN_EN bit from OTP (mirror).
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             Output parameter returning the value of SYNC_PIN_EN.
     @return aoresult_ok if all ok, otherwise an error code.
@@ -356,7 +370,6 @@ aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable) {
     @brief  Writes the SYNC_PIN_EN bit to OTP (mirror).
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  enable
             The new value for SYNC_PIN_EN.
     @return aoresult_ok if all ok, otherwise an error code.
@@ -385,7 +398,6 @@ aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable) {
             device `daddr7`, attached to OSP node `addr`.
     @param  addr
             The address to send the telegram to (unicast).
-            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
     @param  daddr7
             The 7 bits I2C device address used in mastering the write.
     @param  raddr
