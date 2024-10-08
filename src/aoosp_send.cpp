@@ -382,7 +382,7 @@ aoresult_t aoosp_send_initbidir(uint16_t addr, uint16_t * last, uint8_t * temp, 
       else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
     Serial.printf(" ->" );
     if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
-    Serial.printf(" last=0x%02X=%d temp=0x%02X=%d stat=0x%02X=%s",  *last, *last,
+    Serial.printf(" last=0x%03X=%d temp=0x%02X=%d stat=0x%02X=%s",  *last, *last,
       *temp, aoosp_prt_temp_said(*temp), *stat, aoosp_prt_stat_said(*stat) );
     Serial.printf(" (%d, %s)\n",  aoosp_prt_temp_rgbi(*temp), aoosp_prt_stat_rgbi(*stat) );
   }
@@ -483,7 +483,7 @@ aoresult_t aoosp_send_initloop(uint16_t addr, uint16_t * last, uint8_t * temp, u
       else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
     Serial.printf(" ->" );
     if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
-    Serial.printf(" last=0x%02X=%d temp=0x%02X=%d stat=0x%02X=%s",  *last, *last,
+    Serial.printf(" last=0x%03X=%d temp=0x%02X=%d stat=0x%02X=%s",  *last, *last,
       *temp, aoosp_prt_temp_said(*temp), *stat, aoosp_prt_stat_said(*stat) );
     Serial.printf(" (%d, %s)\n",  aoosp_prt_temp_rgbi(*temp), aoosp_prt_stat_rgbi(*stat) );
   }
@@ -1850,7 +1850,7 @@ static aoresult_t aoosp_des_readcomst(aoosp_tele_t * tele, uint8_t * com) {
             (how its SIO ports are configured 00=LVDS, 01=EOL, 10=MCU, 11=CAN).
     @param  addr
             The address to send the telegram to (unicast).
-    @param  comm
+    @param  com
             Output parameter returning the communication status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameter is set.
@@ -2493,6 +2493,8 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
     @param  addr
             The address to send the telegram to (unicast),
             (use 0 for broadcast, or 3F0..3FE for group).
+    @param  chn
+            The channel of the node for which the PWM settings are configured.
     @param  red
             The PWM setting for red (16 bit).
     @param  green
@@ -2505,7 +2507,9 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
             contents are specific for multi channel PWM devices like SAIDs. 
             For single channel PWM devices, like RGBi, use SETPWM.
     @note   The meaning of the 16 bits varies, they are not detailed 
-            here at telegram level.
+            here at telegram level. For SAID the 15 MSB bits form the PWM
+            value, and the LSB bit en/disables dithering (this may be 
+            regarded as bit 16 of PWM value).
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_setpwmchn(uint16_t addr, uint8_t chn, uint16_t red, uint16_t green, uint16_t blue) {

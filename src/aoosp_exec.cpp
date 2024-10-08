@@ -122,6 +122,8 @@ uint16_t aoosp_exec_resetinit_last() {
 
 /*!
     @brief  Reads the entire OTP and prints the details requested in `flags`.
+    @param  addr
+            The address of the OSP node to dump the OTP for (unicast).
     @param  flags
             Combination of AOOSP_OTPDUMP_XXX
     @return aoresult_ok if all ok, otherwise an error code.

@@ -5,7 +5,7 @@ is one of the **aolibs**; short for Arduino OSP libraries from ams-OSRAM.
 This suite implements support for chips that use the Open System Protocol, 
 like the AS1163 ("SAID") or the OSIRE E3731i ("RGBi").
 The landing page for the _aolibs_ is on 
-[GitHub](https://github.com/ams-OSRAM-Group/OSP_aotop).
+[GitHub](https://github.com/ams-OSRAM/OSP_aotop).
 
 
 ## Introduction
@@ -42,6 +42,12 @@ File > Examples > OSP Telegrams aoosp > ...
 - **aoosp_topo** ([source](examples/aoosp_topo))  
   This demo scans all nodes and prints out the chain configuration:
   comms for both SIOs, direction, power state, number of RGBs and I2Cs.
+
+- **aoosp_cur** ([source](examples/aoosp_cur))  
+  This demo configures channel 1 of node 001 to use a high drive current,
+  and it configures channel 1 of node 002 to use a low drive current.
+  Next it broadcasts `setpwm` with max brightness (7FFF 7FFF 7FFF). This
+  results in the two white lights with different brightness.
 
 - **aoosp_error** ([source](examples/aoosp_error))  
   This demo shows how error handling works in SAID. The STAT register has 
@@ -83,9 +89,9 @@ File > Examples > OSP Telegrams aoosp > ...
 
 ## Module architecture
 
-This library contains 4 modules, see figure below (arrows indicate #include).
+This library contains 4 modules, see figure below (arrows indicate `#include`).
 
-![Modules](extras/modules.drawio.png)
+![Modules](extras/aoosp-modules.drawio.png)
 
 - **aoosp_crc** (`aoosp_crc.cpp` and `aoosp_crc.h`) is a small module that implements 
   one function. It computes the OSP CRC checksum of a byte array. The module is stateless.
@@ -189,11 +195,19 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
-- **2024 sep 10, 0.4.2**
+- **2024 October 8, 0.4.3**
+  - Prefixed `modules.drawio.png` with library short name.
+  - Documentation update in: `readme.md`, `aoosp_exec.cpp`, `aoosp_prt.cpp`, and `aoosp_send.cpp`.
+  - Added example `aoosp_cur.ino` (drive current demo).
+  - Fixed white lines in `aoosp_exec.h`.
+  - Log of `aoosp_send_initxxx()` now prints 3 digits.
+  - Moved domain from `github.com/ams-OSRAM-Group` to `github.com/ams-OSRAM`.
+
+- **2024 September 10, 0.4.2**
   - Fixed TID bug in `aoosp_con_seti2ccfg()`.
   - `aoosp_exec_i2cpower(addr)` now also checks if addr is a SAID.
   - Detailed addressing for `aoosp_send_xxx()` and removed old datasheet names.
-  - Corrected documentation on <addr> in `aoosp_exec_xxx()` functions.
+  - Corrected documentation on `addr` in `aoosp_exec_xxx()` functions.
   - Added topology check to `aoosp-time.ino`.
   - Added explanation for SYNC via pin in `aoosp_sync.ino`.
   - Added remark on OTP password for `aoosp_otp.ino`.
@@ -202,19 +216,19 @@ Some frequent ones have been abstracted in this module.
   - Role of 'mult' in `aoosp_error.ino` explained.
   - Added BEHAVIOR section to explanation in examples.
 
-- **2024 sep 5, 0.4.1**
+- **2024 September 5, 0.4.1**
   - API section in readme now shows parameter names.
   - Added `aoosp_exec_resetinit_last()`.
   - Made output parameters of `aoosp_exec_resetinit()` optional (adapted an example).
   - Bug fix: when `aoosp_exec_resetinit` had NULL for output parameters they were still assigned.
   - Bug fix: changed `AOOSP_ADDR_NOTNIT` to `AOOSP_ADDR_UNINIT` in `AOOSP_ADDR_GROUP`.
   
-- **2024 aug 28, 0.4.0**
+- **2024 August 28, 0.4.0**
   - Renamed/split `AOOSP_ADDR_MIN|MAX` to `AOOSP_ADDR_UNICASTMIN|MAX` and `AOOSP_ADDR_GLOBALMIN|MAX`.
   - Added `AOOSP_OTPADDR_CUSTOMER_MIN|MAX`.
   - Added links in `readme.md` for all example sketches.
 
-- **2024 aug 9, 0.3.1**
+- **2024 August 9, 0.3.1**
   - Typos fixed in `aoosp_send.cpp`.
   - In `aoosp_send.h` cleaned up `AOOSP_ADDR_xxx`.
   - Typos fixed in `readme.md`, `aoosp.cpp`, `aoosp_crc.cpp`, `aoosp_exec.h`.
@@ -232,7 +246,7 @@ Some frequent ones have been abstracted in this module.
   - `license.txt`, `examples\xxx.ino` line endings changed from LF to CR+LF.
   - Fixed argument test in `aoosp_con_setcurchn()`.
 
-- **2024 Jul 02, 0.2.4**  
+- **2024 July 02, 0.2.4**  
   - Initial release candidate.
 
 

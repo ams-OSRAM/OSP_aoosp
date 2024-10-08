@@ -261,7 +261,7 @@ char * aoosp_prt_com_said(uint8_t com) {
 
 /*!
     @brief  Converts an OSP setup byte to a string.
-    @param  com
+    @param  flags
             The 8 bit setup byte.
     @return A string consisting of two parts separated by a slash.
             Part 1 bits 4-7: 1 char for PWM fast, mcu spi CLK inverted, CRC check enabled, Temp sensor slow rate.
