@@ -33,9 +33,10 @@ typedef struct aoosp_tele_s { uint8_t data[AOOSP_TELE_MAXSIZE]; uint8_t size; } 
 
 
 // Generic telegram field access macros
-#define BITS_MASK(n)         ((1<<(n))-1)                            // series of n bits: BITS_MASK(3)=0b111 (max n=31)
-#define BITS_SLICE(v,lo,hi)  ( ((v)>>(lo)) & BITS_MASK((hi)-(lo)) )  // takes bits [lo..hi) from v: BITS_SLICE(0b11101011,2,6)=0b1010
-#define PSI(payloadsize)     ( (payloadsize)<8 ? (payloadsize) : 7 ) // convert "human" payload size, to "telegram" payload size
+#define BITS_MASK(n)          ( (1<<(n))-1 )                          // series of n bits: BITS_MASK(3)=0b111 (max n=31)
+#define BITS_SLICE(v,lo,hi)   ( ((v)>>(lo)) & BITS_MASK((hi)-(lo)) )  // takes bits [lo..hi) from v: BITS_SLICE(0b11101011,2,6)=0b1010
+#define SIZE2PSI(payloadsize) ( (payloadsize)<8 ? (payloadsize) : 7 ) // convert payload size, to PSI (payload size indicator)
+#define TELEPSI(tele)         ( BITS_SLICE((tele)->data[1],0,2)*2 + BITS_SLICE((tele)->data[2],7,8) ) // get PSI bits from tele
 
 
 // === LOG ================================================
@@ -174,8 +175,8 @@ static aoresult_t aoosp_con_reset(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -243,8 +244,8 @@ static aoresult_t aoosp_con_clrerror(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -308,8 +309,8 @@ static aoresult_t aoosp_con_initbidir(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -318,11 +319,14 @@ static aoresult_t aoosp_con_initbidir(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 static aoresult_t aoosp_des_initbidir(aoosp_tele_t * tele, uint16_t * last, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
   if( tele==0 || last==0 || temp==0 || stat==0 ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
   if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
   if( BITS_SLICE(tele->data[2],0,7)!=0x02      ) return aoresult_osp_tid;
-  if( tele->size!=4+2                          ) return aoresult_osp_size;
   if( aoosp_crc(tele->data,tele->size) != 0    ) return aoresult_osp_crc;
 
   // Get fields
@@ -410,8 +414,8 @@ static aoresult_t aoosp_con_initloop(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -420,11 +424,14 @@ static aoresult_t aoosp_con_initloop(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_initloop(aoosp_tele_t * tele, uint16_t * last, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
   if( tele==0 || last==0 || temp==0 || stat==0 ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
   if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
   if( BITS_SLICE(tele->data[2],0,7)!=0x03      ) return aoresult_osp_tid;
-  if( tele->size!=4+2                          ) return aoresult_osp_size;
   if( aoosp_crc(tele->data,tele->size) != 0    ) return aoresult_osp_crc;
 
   // Get fields
@@ -511,8 +518,8 @@ static aoresult_t aoosp_con_gosleep(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -576,8 +583,8 @@ static aoresult_t aoosp_con_goactive(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -645,8 +652,8 @@ static aoresult_t aoosp_con_identify(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -655,12 +662,15 @@ static aoresult_t aoosp_con_identify(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_identify(aoosp_tele_t * tele, uint32_t * id) {
+  // Set constants
+  const uint8_t payloadsize = 4;
   // Check telegram consistency
-  if( tele==0 || id==0                    ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x07 ) return aoresult_osp_tid;
-  if( tele->size!=4+4                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || id==0                         ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x07      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *id = (uint32_t)(tele->data[3])<<24 | (uint32_t)(tele->data[4])<<16 | (uint32_t)(tele->data[5])<<8 | (uint32_t)(tele->data[6]);
@@ -743,8 +753,8 @@ static aoresult_t aoosp_con_readmult(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -753,12 +763,15 @@ static aoresult_t aoosp_con_readmult(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_readmult(aoosp_tele_t * tele, uint16_t *groups ) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
-  if( tele==0 || groups==0                ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x0C ) return aoresult_osp_tid;
-  if( tele->size!=4+2                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || groups==0                     ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x0C      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *groups= (tele->data[3] << 8) | (tele->data[4] << 0);
@@ -834,8 +847,8 @@ static aoresult_t aoosp_con_setmult(aoosp_tele_t * tele, uint16_t addr, uint16_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = BITS_SLICE(groups,8,16);
   tele->data[4] = BITS_SLICE(groups,0,8);
@@ -907,8 +920,8 @@ static aoresult_t aoosp_con_sync(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -974,8 +987,8 @@ static aoresult_t aoosp_con_idle(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1038,8 +1051,8 @@ static aoresult_t aoosp_con_foundry(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1102,8 +1115,8 @@ static aoresult_t aoosp_con_cust(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1166,8 +1179,8 @@ static aoresult_t aoosp_con_burn(aoosp_tele_t * tele, uint16_t addr) {
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1239,8 +1252,8 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = daddr7 << 1; // 7 bits address needs shifting
   tele->data[4] = raddr;
@@ -1324,8 +1337,8 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = daddr7 << 1; // 7 bits device address needs shifting
   tele->data[4] = raddr;
@@ -1412,8 +1425,8 @@ static aoresult_t aoosp_con_readlast(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1422,13 +1435,16 @@ static aoresult_t aoosp_con_readlast(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_readlast(aoosp_tele_t * tele, uint8_t * buf, int size) {
+  // Set constants
+  const uint8_t payloadsize = 8;
   // Check telegram consistency
-  if( tele==0 || buf==0                   ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x1E ) return aoresult_osp_tid;
-  if( tele->size!=4+8                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
-  if( size<1 || size>8                    ) return aoresult_osp_arg;
+  if( tele==0 || buf==0                        ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x1E      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+  if( size<1 || size>8                         ) return aoresult_osp_arg;
 
   // Get fields
   for( int i=0; i<size; i++ ) buf[i] = tele->data[11-size+i];
@@ -1514,8 +1530,8 @@ static aoresult_t aoosp_con_goactive_sr(aoosp_tele_t * tele, uint16_t addr, uint
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1524,12 +1540,15 @@ static aoresult_t aoosp_con_goactive_sr(aoosp_tele_t * tele, uint16_t addr, uint
 
 
 static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
-  if( tele==0 || stat==0                  ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x25 ) return aoresult_osp_tid;
-  if( tele->size!= 4+2                    ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || stat==0                       ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x25      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *temp = tele->data[3];
@@ -1629,8 +1648,8 @@ static aoresult_t aoosp_con_readstat(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1639,12 +1658,15 @@ static aoresult_t aoosp_con_readstat(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_readstat(aoosp_tele_t * tele, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 1;
   // Check telegram consistency
-  if( tele==0 || stat==0                  ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x40 ) return aoresult_osp_tid;
-  if( tele->size!= 4+1                    ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || stat==0                       ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x40      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *stat = tele->data[3];
@@ -1722,8 +1744,8 @@ static aoresult_t aoosp_con_readtempstat(aoosp_tele_t * tele, uint16_t addr, uin
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1732,12 +1754,15 @@ static aoresult_t aoosp_con_readtempstat(aoosp_tele_t * tele, uint16_t addr, uin
 
 
 static aoresult_t aoosp_des_readtempstat(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
-  if( tele==0 || temp==0 || stat==0       ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x42 ) return aoresult_osp_tid;
-  if( tele->size!=4+2                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || temp==0 || stat==0            ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x42      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *temp = tele->data[3];
@@ -1820,8 +1845,8 @@ static aoresult_t aoosp_con_readcomst(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1830,12 +1855,15 @@ static aoresult_t aoosp_con_readcomst(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 static aoresult_t aoosp_des_readcomst(aoosp_tele_t * tele, uint8_t * com) {
+  // Set constants
+  const uint8_t payloadsize = 1;
   // Check telegram consistency
-  if( tele==0 || com==0                   ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x44 ) return aoresult_osp_tid;
-  if( tele->size!=4+1                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || com==0                        ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x44      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *com= tele->data[3];
@@ -1917,8 +1945,8 @@ static aoresult_t aoosp_con_readtemp(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -1927,12 +1955,15 @@ static aoresult_t aoosp_con_readtemp(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 static aoresult_t aoosp_des_readtemp(aoosp_tele_t * tele, uint8_t * temp) {
+  // Set constants
+  const uint8_t payloadsize = 1;
   // Check telegram consistency
-  if( tele==0 || temp==0                  ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x48 ) return aoresult_osp_tid;
-  if( tele->size!= 4+1                    ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || temp==0                       ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x48      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *temp = tele->data[3];
@@ -2013,8 +2044,8 @@ static aoresult_t aoosp_con_readsetup(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -2023,12 +2054,15 @@ static aoresult_t aoosp_con_readsetup(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 static aoresult_t aoosp_des_readsetup(aoosp_tele_t * tele, uint8_t *flags ) {
+  // Set constants
+  const uint8_t payloadsize = 1;
   // Check telegram consistency
-  if( tele==0 || flags==0                 ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x4C ) return aoresult_osp_tid;
-  if( tele->size!=4+1                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || flags==0                      ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x4C      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *flags= tele->data[3];
@@ -2101,8 +2135,8 @@ static aoresult_t aoosp_con_setsetup(aoosp_tele_t * tele, uint16_t addr, uint8_t
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = flags;
 
@@ -2169,8 +2203,8 @@ static aoresult_t aoosp_con_readpwm(aoosp_tele_t * tele, uint16_t addr, uint8_t 
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -2180,11 +2214,14 @@ static aoresult_t aoosp_con_readpwm(aoosp_tele_t * tele, uint16_t addr, uint8_t 
 
 // the three 1-bit daytimes flags are clubbed into one daytimes argument
 static aoresult_t aoosp_des_readpwm(aoosp_tele_t * tele, uint16_t *red, uint16_t *green, uint16_t *blue, uint8_t *daytimes) {
+  // Set constants
+  const uint8_t payloadsize = 6;
   // Check telegram consistency
   if( tele==0 || red==0 || green==0 || blue==0 || daytimes==0 ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                               ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)                    ) return aoresult_osp_psi;
   if( BITS_SLICE(tele->data[0],4,8)!=0xA                      ) return aoresult_osp_preamble;
   if( BITS_SLICE(tele->data[2],0,7)!=0x4E                     ) return aoresult_osp_tid;
-  if( tele->size!=4+6                                         ) return aoresult_osp_size;
   if( aoosp_crc(tele->data,tele->size)!=0                     ) return aoresult_osp_crc;
 
   // Get fields
@@ -2273,8 +2310,8 @@ static aoresult_t aoosp_con_readpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = chn;
 
@@ -2286,11 +2323,14 @@ static aoresult_t aoosp_con_readpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8
 
 // the meaning of the 16 color bits varies, not detailed here at telegram level
 static aoresult_t aoosp_des_readpwmchn(aoosp_tele_t * tele, uint16_t *red, uint16_t *green, uint16_t *blue ) {
+  // Set constants
+  const uint8_t payloadsize = 6;
   // Check telegram consistency
   if( tele==0 || red==0 || green==0 || blue==0 ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
   if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
   if( BITS_SLICE(tele->data[2],0,7)!=0x4E      ) return aoresult_osp_tid;
-  if( tele->size!=4+6                          ) return aoresult_osp_size;
   if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
@@ -2382,8 +2422,8 @@ static aoresult_t aoosp_con_setpwm(aoosp_tele_t * tele, uint16_t addr, uint16_t 
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = BITS_SLICE(daytimes,2,3)<<7 | BITS_SLICE(red,8,15);
   tele->data[4] = BITS_SLICE(red,0,8);
@@ -2468,8 +2508,8 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = chn;
   tele->data[4] = 0xFF; // dummy;
@@ -2559,8 +2599,8 @@ static aoresult_t aoosp_con_readcurchn(aoosp_tele_t * tele, uint16_t addr, uint8
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = chn;
 
@@ -2571,11 +2611,14 @@ static aoresult_t aoosp_con_readcurchn(aoosp_tele_t * tele, uint16_t addr, uint8
 
 
 static aoresult_t aoosp_des_readcurchn(aoosp_tele_t * tele, uint8_t *flags, uint8_t *rcur, uint8_t *gcur, uint8_t *bcur ) {
+  // Set constants
+  const uint8_t payloadsize = 2;
   // Check telegram consistency
   if( tele==0 || flags==0 || rcur==0 || gcur==0 || bcur==0 ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                            ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)                 ) return aoresult_osp_psi;
   if( BITS_SLICE(tele->data[0],4,8)!=0xA                   ) return aoresult_osp_preamble;
   if( BITS_SLICE(tele->data[2],0,7)!=0x50                  ) return aoresult_osp_tid;
-  if( tele->size!=4+2                                      ) return aoresult_osp_size;
   if( aoosp_crc(tele->data,tele->size)!=0                  ) return aoresult_osp_crc;
 
   // Get fields
@@ -2669,8 +2712,8 @@ static aoresult_t aoosp_con_setcurchn(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = chn;
 
@@ -2756,8 +2799,8 @@ static aoresult_t aoosp_con_readi2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
 
@@ -2766,12 +2809,15 @@ static aoresult_t aoosp_con_readi2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8
 
 
 static aoresult_t aoosp_des_readi2ccfg(aoosp_tele_t * tele, uint8_t *flags, uint8_t * speed ) {
+  // Set constants
+  const uint8_t payloadsize = 1;
   // Check telegram consistency
-  if( tele==0 || flags==0 || speed==0     ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x56 ) return aoresult_osp_tid;
-  if( tele->size!=4+1                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
+  if( tele==0 || flags==0 || speed==0          ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x56      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
 
   // Get fields
   *flags = BITS_SLICE(tele->data[3],4,8);
@@ -2853,8 +2899,8 @@ static aoresult_t aoosp_con_seti2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = flags << 4 | speed;
 
@@ -2927,8 +2973,8 @@ static aoresult_t aoosp_con_readotp(aoosp_tele_t * tele, uint16_t addr, uint8_t 
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = otpaddr;
 
@@ -2939,13 +2985,16 @@ static aoresult_t aoosp_con_readotp(aoosp_tele_t * tele, uint16_t addr, uint8_t 
 
 
 static aoresult_t aoosp_des_readotp(aoosp_tele_t * tele, uint8_t * buf, int size) {
+  // Set constants
+  const uint8_t payloadsize = 8;
   // Check telegram consistency
-  if( tele==0 || buf==0                   ) return aoresult_outargnull;
-  if( BITS_SLICE(tele->data[0],4,8)!=0xA  ) return aoresult_osp_preamble;
-  if( BITS_SLICE(tele->data[2],0,7)!=0x58 ) return aoresult_osp_tid;
-  if( tele->size!=4+8                     ) return aoresult_osp_size;
-  if( aoosp_crc(tele->data,tele->size)!=0 ) return aoresult_osp_crc;
-  if( size<1 || size>8                    ) return aoresult_osp_arg;
+  if( tele==0 || buf==0                        ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x58      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+  if( size<1 || size>8                         ) return aoresult_osp_arg;
 
   // Get fields
   // OSP telegrams are big endian, C byte arrays are little endian, so reverse.
@@ -3044,8 +3093,8 @@ static aoresult_t aoosp_con_setotp(aoosp_tele_t * tele, uint16_t addr, uint8_t o
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   // OSP telegrams are big endian, C byte arrays are little endian, so reverse
   for( int i=0; i<size; i++ ) tele->data[9-i] = buf[i];
@@ -3136,8 +3185,8 @@ static aoresult_t aoosp_con_settestdata(aoosp_tele_t * tele, uint16_t addr, uint
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   tele->data[3] = BITS_SLICE(data,8,16);
   tele->data[4] = BITS_SLICE(data,0,8);
@@ -3216,8 +3265,8 @@ static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64
   tele->size    = payloadsize+4;
 
   tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
-  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(PSI(payloadsize),1,3);
-  tele->data[2] = BITS_SLICE(PSI(payloadsize),0,1)<<7 | tid;
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
 
   memcpy( &(tele->data[3]), &pw, 6); // 3..8
 

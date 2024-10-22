@@ -195,6 +195,9 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2024 October 22, 0.4.4**
+  - Response telegrams now checked for mismatch between payload size and PSI.
+  
 - **2024 October 8, 0.4.3**
   - Prefixed `modules.drawio.png` with library short name.
   - Documentation update in: `readme.md`, `aoosp_exec.cpp`, `aoosp_prt.cpp`, and `aoosp_send.cpp`.
