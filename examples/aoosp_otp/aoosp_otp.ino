@@ -27,7 +27,7 @@ DESCRIPTION
 This demo reads and writes from/to the OTP (one time programmable memory)
 of a SAID.
 Enable the OTP password (ask supplier) or this example will complain
-  WARNING: Please ask ams-OSRAM for correct TESTPW (uncomment //#include in aoosp_send.h)
+  WARNING: WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
 Note that OTP writes access the OTP mirror in RAM, not the actual OTP ("ROM").
 The mirror is persistent over RESET, but not over POR (power on reset).
 The latter requires the CUST, BURN, IDLE steps, which are beyond the scope 
@@ -43,12 +43,12 @@ Nothing to be seen, example only manipulates OTP memory.
 
 OUTPUT
 Welcome to aoosp_otp.ino
-version: result 0.4.1 spi 0.5.1 osp 0.4.1
+version: result 0.4.4 spi 0.5.6 osp 0.4.4
 spi: init
 osp: init
 
 DUMP of 001
-resetinit last 009 loop
+resetinit last 002 loop
 
 otp: 0x0D: 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 otp: CH_CLUSTERING     0D.7:5 0
@@ -62,7 +62,7 @@ otp: OTP_ADDR_EN       0E.3   0
 otp: STAR_NET_OTP_ADDR 0E.2:0 0 (0x000)
 
 READ/WRITE DEMO of 001
-resetinit last 009 loop
+resetinit last 002 loop
 
 otp: 0x0D: 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 10 <- 5A

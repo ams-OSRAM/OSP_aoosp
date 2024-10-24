@@ -23,6 +23,7 @@
 #include <Arduino.h>    // Serial.printf
 #include <aospi.h>      // aospi_dirmux_set_loop
 #include <aoosp_send.h> // aoosp_send_reset, aoosp_send_initloop
+#include <aoosp.h>      // aoosp_said_testpw_get
 #include <aoosp_exec.h> // own API
 
 
@@ -206,6 +207,8 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
     @param  andmask
             A mask applied ("anded") first to old value
     @return aoresult_ok if all ok, otherwise an error code.
+    @note   This function needs the SAID test password; it obtains it via 
+            `aoosp_said_testpw_get()`. Make sure it is correct.
     @note   The OTP mirror allows bits to be changed to 0; but when the OTP
             mirror is burned to OTP, a 1-bit in OTP stays at 1.
             So it might be wise to keep andmask to 0xFF.
@@ -224,7 +227,7 @@ aoresult_t aoosp_exec_setotp(uint16_t addr, uint8_t otpaddr, uint8_t ormask, uin
   int resource_pw=0;
 
   // Set password for writing
-  result= aoosp_send_settestpw(addr,AOOSP_TESTPW_SAID);
+  result= aoosp_send_settestpw(addr,aoosp_said_testpw_get());
   if( result!=aoresult_ok ) goto free_resources;
   resource_pw = 1; // password is set, flag that we need to unset
 
@@ -285,7 +288,9 @@ aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable) {
     @param  enable
             The new value for I2C_BRIDGE_EN.
     @return aoresult_ok if all ok, otherwise an error code.
-    @note   Wrapper around aoosp_exec_setotp for easy access.
+    @note   Wrapper around `aoosp_exec_setotp()` for easy access.
+            That function needs the SAID test password; it obtains it via 
+            `aoosp_said_testpw_get()`. Make sure it is correct.
     @note   The write is not to the OTP, but to the OTP mirror (RAM).
             The mirror is initialized with the OTP content on power on reset.
             The mirror is not re-initialized by a RESET telegram.
@@ -375,7 +380,9 @@ aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable) {
     @param  enable
             The new value for SYNC_PIN_EN.
     @return aoresult_ok if all ok, otherwise an error code.
-    @note   Wrapper around aoosp_exec_setotp for easy access.
+    @note   Wrapper around `aoosp_exec_setotp()` for easy access.
+            That function needs the SAID test password; it obtains it via 
+            `aoosp_said_testpw_get()`. Make sure it is correct.
     @note   The write is not to the OTP, but to the OTP mirror in device RAM.
             The mirror is initialized with the OTP content on power on reset.
             The mirror is not re-initialized by a RESET telegram.

@@ -23,7 +23,7 @@
 
 
 // Identifies lib version
-#define AOOSP_VERSION "0.4.4"
+#define AOOSP_VERSION "0.4.5"
 
 
 // Include the (headers of the) modules of this app
@@ -33,8 +33,17 @@
 #include <aoosp_exec.h> // execute high level OSP routines (several telegrams)
 
 
+// Get the SAID test password - returns AOOSP_SAID_TESTPW_UNKNOWN unless set with eg `aoosp_said_testpw_set()`.
+uint64_t aoosp_said_testpw_get();
+// Set the SAID test password - functions like aoosp_exec_setotp() need it.
+void aoosp_said_testpw_set( uint64_t pw );
+
+
 // Initializes the aoosp library.
 void aoosp_init(); 
 
 
 #endif
+
+
+

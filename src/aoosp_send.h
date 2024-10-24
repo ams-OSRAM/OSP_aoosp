@@ -574,8 +574,7 @@ aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data );
 /* Reserved telegram ID */
 
 
-#define AOOSP_TESTPW_SAID 0xFFffFFffFFffULL // The password for aoosp_send_settestpw() - ask ams-OSRAM
-//#include "../../said-password.h"
+#define AOOSP_SAID_TESTPW_UNKNOWN 0x0000FFffFFffFFffULL // Use this as SAID password if the password is unknown - it gives warnings 
 // Telegram 5F SETTESTPW - sets the test password of the addressed node.
 aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 

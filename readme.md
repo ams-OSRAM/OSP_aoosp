@@ -67,11 +67,6 @@ File > Examples > OSP Telegrams aoosp > ...
   assumed to have I2C device address 0x50 connected to the first SAID.
   Finally it polls the INT line and shows its status on SAID1.RGB0.
 
-- **aoosp_otp** ([source](examples/aoosp_otp))  
-  This demo reads and writes from/to the OTP (one time programmable 
-  memory) of a SAID.
-  The _OTP password must be known and enabled_ for this example will not work.
-  
 - **aoosp_sync** ([source](examples/aoosp_sync))  
   This demo shows how to use the SYNC feature; a feature that switches on all 
   LEDs at the same time. We first enable (channels) of nodes for SYNC
@@ -86,6 +81,16 @@ File > Examples > OSP Telegrams aoosp > ...
   Once we use the high level aoosp API, and once we use low level aospi API.
   The conclusion is that the software overhead can be ignored.
 
+- **aoosp_cluster** ([source](examples/aoosp_cluster))  
+  This demo shows how clustering works - even on the evaluation kit,
+  where none of the SAIDs is wired for clustering.
+  The _OTP password must be known and enabled_ or this example will not work.
+
+- **aoosp_otp** ([source](examples/aoosp_otp))  
+  This demo reads and writes from/to the OTP (one time programmable 
+  memory) of a SAID.
+  The _OTP password must be known and enabled_ or this example will not work.
+  
 
 ## Module architecture
 
@@ -129,6 +134,9 @@ The headers contain little documentation; for that see the module source files.
 - `aoosp_init()` not really needed (aoosp has no state to init), but added for forward compatibility.
 - `AOOSP_VERSION`  identifies the version of the library.
 
+The module also implements the rarely used store for the SAID password to enter test mode,
+see `aoosp_said_testpw_get()` and `aoosp_said_testpw_set(...)`.
+
 
 ### aoosp_crc
 
@@ -167,6 +175,13 @@ Examples are
 - `aoosp_send_setpwmchn(addr,...)` configures the PWM settings of one channel of the addressed node ("lit").
 - ...
 
+There are several macros to help composing telegrams or analyzing responses.
+- `AOOSP_ADDR_XXX` to pass (`AOOSP_ADDR_BROADCAST`, `AOOSP_ADDR_GROUP5`) or check (`AOOSP_ADDR_ISUNICAST`) addresses.
+- To analyze identity, e.g. `AOOSP_IDENTIFY_IS_SAID`.
+- To analyze various status bytes, e.g. `AOOSP_STAT_FLAGS_OV`, `AOOSP_COMST_SIO1_MCU`, `AOOSP_SETUP_FLAGS_UV`.
+- To configure current drivers, e.g. `AOOSP_CURCHN_FLAGS_DITHER`, or `AOOSP_CURCHN_FLAGS_SYNCEN`.
+- To configure/test I2C, e.g. `AOOSP_I2CCFG_SPEED_400kHz`, or `AOOSP_I2CCFG_FLAGS_NACK`.
+
 This module supports logging. 
 Via `aoosp_loglevel_set(level)` and `aoosp_loglevel_get()` the log level can be managed:
 
@@ -194,6 +209,12 @@ Some frequent ones have been abstracted in this module.
 
 
 ## Version history _aoosp_
+
+- **2024 October 24, 0.4.5**
+  - Added example `aoosp_cluster.ino`.
+  - Documented (telegram) macros in readme.
+  - SAID test password now in a store `aoosp_said_testpw_get()` and `aoosp_said_testpw_set()`.
+  - OTP write `aoosp_exec_setotp()` uses that store.
 
 - **2024 October 22, 0.4.4**
   - Response telegrams now checked for mismatch between payload size and PSI.

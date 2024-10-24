@@ -97,7 +97,7 @@ void send_min(int loop) {
   }
   // Note: aoosp_exec_resetinit() implements reset and init with autodetect
 
-  // Clear the error flags of all node (broadcast).
+  // Clear the error flags of all nodes (broadcast).
   // SAIDs have the V flag (over-voltage) after reset, preventing them from going active.
   result= aoosp_send_clrerror(0x000); 
   Serial.printf("clrerror %s\n", aoresult_to_str(result) );

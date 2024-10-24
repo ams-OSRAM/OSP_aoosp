@@ -24,6 +24,64 @@
 #include <aoosp.h>      // own
 
 
+// ===== SAID test password =================================================
+
+
+//#include "../../said-password.h" // pull-in the password if available
+#ifndef AOOSP_SAID_TESTPW
+  // SAID test password unknown: use the one that generates warnings
+  #define AOOSP_SAID_TESTPW   AOOSP_SAID_TESTPW_UNKNOWN
+#endif
+
+
+// Central store for the SAID test password
+static uint64_t aoosp_said_testpw = AOOSP_SAID_TESTPW;
+
+
+/*!
+    @brief  Functions that need the SAID test password should obtain it 
+            through this central store. 
+    @return The SAID password for entering test mode.
+    @note   There are three options to get the correct password in the store
+            (1) Compile-time: make sure the macro AOOSP_SAID_TESTPW is defined
+                when compiling either by (1a) modify this source file to 
+                include the #define, (1b) have said-password.h and uncomment 
+                the #include, (1c) add -DAOOSP_SAID_TESTPW in build bypassing
+                Arduino IDE.
+            (2) Run-time: call `aoosp_said_testpw_set()` early, eg in setup().
+            (3) Command-time: while running, assuming the command interpreter
+                and the command 'osp' are linked-in, set the password with 
+                (3a) the command 'osp password'; this could even (3b) be part 
+                of boot.cmd.
+            Solutions (1b) and (3a) are the preferred permanent respectively
+            temporary solutions. In all cases, ask your contact at ams-OSRAM 
+            for the actual password.
+    @note   By default, when the test password is not set, it equals
+            AOOSP_SAID_TESTPW_UNKNOWN. A warning will be printed by the
+            function that sends a password to a SAID (`aoosp_send_settestpw()`)
+            if the password being sent equals AOOSP_SAID_TESTPW_UNKNOWN.
+            This warns the user if a feature is used that needs the password.
+*/
+uint64_t aoosp_said_testpw_get() {
+  return aoosp_said_testpw;
+}
+
+
+/*!
+    @brief  Functions that need the SAID test password (should) obtain it by 
+            calling `aoosp_testpw_get()`. However, the store must contain
+            the password. Either fill it compile-time, or runtime through a 
+            call to this function.
+	@note   See `aoosp_said_testpw_get()` for details.
+*/
+void aoosp_said_testpw_set( uint64_t pw ) {
+  aoosp_said_testpw = pw;
+}
+
+
+// ===== init ===============================================================
+
+
 /*!
     @brief  Initializes the aoosp library.
     @note   At this moment, the aoosp lib has no state (to initialize).

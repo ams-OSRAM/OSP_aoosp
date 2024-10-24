@@ -3251,10 +3251,10 @@ aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data ) {
 
 static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64_t pw) {
   // Check input parameters
-  if( tele==0                     ) return aoresult_outargnull;
-  if( !AOOSP_ADDR_ISOK(addr)      ) return aoresult_osp_addr;
-  if( pw & ~0x0000FFFFFFFFFFFFULL ) return aoresult_osp_arg;
-  if( pw == 0xFFffFFffFFffULL     ) Serial.printf("WARNING: Please ask ams-OSRAM for correct TESTPW (uncomment //#include in aoosp_send.h)\n");
+  if( tele==0                         ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr)          ) return aoresult_osp_addr;
+  if( pw & ~0x0000FFFFFFFFFFFFULL     ) return aoresult_osp_arg;
+  if( pw == AOOSP_SAID_TESTPW_UNKNOWN ) Serial.printf("WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it\n");
 
   // Set constants
   const uint8_t payloadsize = 6;
@@ -3285,7 +3285,7 @@ static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64
     @param  pw
             The 48 bit password.
     @return aoresult_ok if all ok, otherwise an error code.
-    @note   The macro AOOSP_TESTPW_SAID maps to the correct password for SAID.
+    @note   Ask ams-OSRAM for the password, see eg aoosp_said_testpw_get().
     @note   This register is not for normal use; it is needed to enter 
             test mode (SETTESTDATA) for the manufacturer. The exception 
             to the rule is that it is also needed to make SETOTP work.
