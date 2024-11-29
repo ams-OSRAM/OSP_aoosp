@@ -73,7 +73,15 @@ File > Examples > OSP Telegrams aoosp > ...
   (AOOSP_CURCHN_FLAGS_SYNCEN). Next, set those channels to some PWM value.
   Finally we issue a SYNC by broadcasting the SYNC telegram. This makes
   all (channels) of all nodes that are configured for SYNC to activate their
-  PWM settings. It is also possible to pulse a pin as hardware SYNC.
+  PWM settings. 
+  
+  It is also possible to pulse a pin as hardware SYNC. The demo has that
+  as secondary feature, but The _OTP password must be known and enabled_ 
+  for this to work.
+
+- **aoosp_ledst** ([source](examples/aoosp_ledst))  
+  This demo shows the behavior of LOS (LED Open Short) status which is 
+  obtained via the telegram `readledst[chn]`. 
 
 - **aoosp_time** ([source](examples/aoosp_time))  
   This demo sends a series of telegrams. The series originally comes from 
@@ -85,6 +93,11 @@ File > Examples > OSP Telegrams aoosp > ...
   This demo shows how clustering works - even on the evaluation kit,
   where none of the SAIDs is wired for clustering.
   The _OTP password must be known and enabled_ or this example will not work.
+
+- **aoosp_tinfo** ([source](examples/aoosp_tinfo))  
+  This demo shows how to use the ASKTINFO feature. The `asktinfo` telegram 
+  collects the minimum and maximum temperature over an OSP chain using a 
+  mechanism called "serial cast". This demo also explains serial cast.
 
 - **aoosp_otp** ([source](examples/aoosp_otp))  
   This demo reads and writes from/to the OTP (one time programmable 
@@ -175,6 +188,10 @@ Examples are
 - `aoosp_send_setpwmchn(addr,...)` configures the PWM settings of one channel of the addressed node ("lit").
 - ...
 
+It should be noted that some telegrams come in variants like `setpwm` and `setpwmchn`.
+The `...chn` variant is for nodes with multiple RGB channels, like SAID, the
+other variant is for nodes with one channel, like RGBI.
+
 There are several macros to help composing telegrams or analyzing responses.
 - `AOOSP_ADDR_XXX` to pass (`AOOSP_ADDR_BROADCAST`, `AOOSP_ADDR_GROUP5`) or check (`AOOSP_ADDR_ISUNICAST`) addresses.
 - To analyze identity, e.g. `AOOSP_IDENTIFY_IS_SAID`.
@@ -209,6 +226,19 @@ Some frequent ones have been abstracted in this module.
 
 
 ## Version history _aoosp_
+
+- **2024 November 29, 0.5.0**
+  - Added example `aoosp_ledst.ino`.
+  - `aoosp_exec_setotp()` now uses new `aoosp_send_settestpw_sr()`.
+  - Added telegram `aoosp_send_settestpw_sr()`.
+  - Explicit errors in `aoosp_otp.ino`.
+  - Added telegrams `aoosp_send_readledst()` and `aoosp_send_readledstchn()`.
+  - Added `aoosp_prt_ledst()`; all aoosp_prt now use "-" as field separator.
+  - Added telegram `aoosp_send_godeepsleep()`.
+  - Added example `aoosp_tinfo` explaining serial cast (with ASKTINFO).
+  - Added telegrams `aoosp_con_asktinfo()` and variant `aoosp_con_asktinfo_init()`.
+  - Added API documentation for `aoosp_loglevel_set()` and `aoosp_loglevel_get()`.
+  - Removed old datasheet names for telegrams (in `aoosp_send.cpp`).
 
 - **2024 October 24, 0.4.5**
   - Added example `aoosp_cluster.ino`.

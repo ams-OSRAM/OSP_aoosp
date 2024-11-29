@@ -89,14 +89,14 @@ void otp_dump() {
 
   // Reset all nodes (broadcast) in the chain (all "off"; they also lose their address).
   result= aoosp_exec_resetinit(&last,&loop); 
-  if( result!=aoresult_ok ) { Serial.printf("resetinit %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR resetinit %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("resetinit last %03X %s\n", last, loop?"loop":"bidir" );
   Serial.printf("\n");
 
 
   // Dump, update 10, dump, restore 10, dump
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_ALL );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 }
 
 
@@ -110,47 +110,47 @@ void otp_demo() {
 
   // Reset all nodes (broadcast) in the chain (all "off"; they also lose their address).
   result= aoosp_exec_resetinit(&last,&loop); 
-  if( result!=aoresult_ok ) { Serial.printf("resetinit %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR resetinit %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("resetinit last %03X %s\n", last, loop?"loop":"bidir" );
   Serial.printf("\n");
 
 
   // Dump, update 10, dump, restore 10, dump
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 
   result= aoosp_exec_setotp(ADDR, 0x10, 0x5A);
-  if( result!=aoresult_ok ) { Serial.printf("setotp %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR setotp %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("10 <- 5A\n");
 
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 
   result= aoosp_exec_setotp(ADDR, 0x10, 0x00,0x00);
-  if( result!=aoresult_ok ) { Serial.printf("setotp %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR setotp %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("10 <- 00\n");
 
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 
 
   // Get I2C, flip, dump, flip
   result = aoosp_exec_i2cenable_get(ADDR, &enable);
-  if( result!=aoresult_ok ) { Serial.printf("i2cenable_get %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR i2cenable_get %s\n", aoresult_to_str(result) ); return; }
 
   result = aoosp_exec_i2cenable_set(ADDR, !enable);
-  if( result!=aoresult_ok ) { Serial.printf("i2cenable_get %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR i2cenable_get %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("flip 0D.0\n");
 
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 
   result = aoosp_exec_i2cenable_set(ADDR, enable);
-  if( result!=aoresult_ok ) { Serial.printf("i2cenable_get %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR i2cenable_get %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("flip 0D.0\n");
 
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX );
-  if( result!=aoresult_ok ) { Serial.printf("otpdump %s\n", aoresult_to_str(result) ); return; }
+  if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 }
 
 

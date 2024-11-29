@@ -206,7 +206,9 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
             A mask applied ("ored") after andmask.
     @param  andmask
             A mask applied ("anded") first to old value
-    @return aoresult_ok if all ok, otherwise an error code.
+    @return aoresult_ok        if all ok
+            aoresult_osp_nosr  password not unset, node in unknown state, reset advised
+            otherwise          an error code.
     @note   This function needs the SAID test password; it obtains it via 
             `aoosp_said_testpw_get()`. Make sure it is correct.
     @note   The OTP mirror allows bits to be changed to 0; but when the OTP
@@ -227,7 +229,8 @@ aoresult_t aoosp_exec_setotp(uint16_t addr, uint8_t otpaddr, uint8_t ormask, uin
   int resource_pw=0;
 
   // Set password for writing
-  result= aoosp_send_settestpw(addr,aoosp_said_testpw_get());
+  uint8_t temp, stat;
+  result= aoosp_send_settestpw_sr(addr,aoosp_said_testpw_get(),&temp,&stat);
   if( result!=aoresult_ok ) goto free_resources;
   resource_pw = 1; // password is set, flag that we need to unset
 
@@ -248,7 +251,10 @@ aoresult_t aoosp_exec_setotp(uint16_t addr, uint8_t otpaddr, uint8_t ormask, uin
 
   // Clean up by freeing claimed resources (that is, unset password)
 free_resources:
-  if( resource_pw ) aoosp_send_settestpw(addr,0); // no further error handling here
+  if( resource_pw ) {
+    result= aoosp_send_settestpw_sr(addr,0,&temp,&stat);
+    if( result!=aoresult_ok ) result= aoresult_osp_nosr;
+  }
   return result;
 }
 

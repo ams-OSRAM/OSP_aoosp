@@ -102,17 +102,17 @@ char * aoosp_prt_stat_state(uint8_t stat) {
     @brief  Converts an RGBi status byte to a string.
     @param  stat
             Status byte reported by a RGBi node.
-    @return A string consisting of three parts separated by slashes.
+    @return A string consisting of three parts separated by dashes.
             Part 1 status: uninitialized, sleep, active, deepsleep.
             Part 2 bits 4-5: 1 char for Otp error, bidir/Loop
             Part 3 bits 0-3: 1 char for Communication, LED, Over temperature, Under voltage
-            Example "sleep/oL/clou".
+            Example "sleep-oL-clou".
     @note   For SAID use aoosp_prt_stat_said.
             Value typically comes from READSTAT, READTEMPSTAT or INITxxxx.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_stat_rgbi(uint8_t stat) {
-  snprintf( aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s:%s:%s",
+  snprintf( aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_stat_names[BITS_SLICE(stat,6,8)], aoosp_prt_stat_flags46_rgbi[BITS_SLICE(stat,4,6)], aoosp_prt_stat_flags04[BITS_SLICE(stat,0,4)] );
   return aoosp_prt_buf;
 }
@@ -122,24 +122,46 @@ char * aoosp_prt_stat_rgbi(uint8_t stat) {
     @brief  Converts an SAID status byte to a string.
     @param  stat
             Status byte reported by a SAID node.
-    @return A string consisting of three parts separated by slashes.
+    @return A string consisting of three parts separated by dashes.
             Part 1 status: uninitialized, sleep, active, deepsleep.
             Part 2 bits 4-5: Test mode (or otp error), over Voltage
             Part 3 bits 0-3: 1 char for Communication, LED, Over temperature, Under voltage
-            Example "active/tv/clou".
+            Example "active-tv-clou".
     @note   For RGBi use aoosp_prt_stat_rgbi.
             Value typically comes from READSTAT, READTEMPSTAT or INITxxxx.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_stat_said(uint8_t stat) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s:%s:%s",
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_stat_names[BITS_SLICE(stat,6,8)], aoosp_prt_stat_flags46_said[BITS_SLICE(stat,4,6)], aoosp_prt_stat_flags04[BITS_SLICE(stat,0,4)] );
   return aoosp_prt_buf;
 }
 
 
 /*!
-    @brief  Converts an RGBi PWM quartet to a string.
+    @brief  Converts a LED status byte to a string.
+    @param  ledst
+            LED status byte reported by an OSP node.
+    @return A string consisting of three parts separated by dashes.
+            The parts are the open (O vs o) or short (S vs s) state
+            of the red, green and blue driver respectively.
+            Example "os-oS-Os".
+    @note   Value typically comes from READLEDST or READLEDSTCHN.
+    @note   Only use one char* returning pretty print function at a time.
+*/
+char * aoosp_prt_ledst(uint8_t ledst) {
+  //  7  6  5  4   3  2  1  0
+  // RVS RO GO BO RVS RS GS BS (red, green blue x open short)
+  #define oO(pos) ((ledst & (1<<(pos))) ? 'O' : 'o' )
+  #define sS(pos) ((ledst & (1<<(pos))) ? 'S' : 's' )
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%c%c-%c%c-%c%c",
+    /*red*/ oO(6), sS(2), /*grn*/ oO(5), sS(1), /*blu*/ oO(4), sS(0) );
+  return aoosp_prt_buf;
+}
+
+
+/*!
+    @brief  Converts an RGBi PWM quartet (from READPWM) to a string.
     @param  red
             The 15 bit PWM setting for the red driver.
     @param  green
@@ -149,35 +171,35 @@ char * aoosp_prt_stat_said(uint8_t stat) {
     @param  daytimes
             The 3 bit flags signaling day time (ie high current) 
             for red (MSB), green and blue (LSB) driver.
-    @return A string consisting of three parts separated by slashes.
+    @return A string consisting of three parts separated by dashes.
             The three parts are for the red, green and blue and
             have the same rendering: "#.####".
             The # is 0 for night (low current) and 1 for day (high current).
             The #### is hex rendering of the driver value.
-            Example "0.0000/1.7FFF/0.0000".
+            Example "0.0000-1.7FFF-0.0000".
     @note   For SAID use aoosp_prt_pwm_said.
             Value typically comes from READPWM or READPWMCHN.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t daytimes) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%X.%04X:%X.%04X:%X.%04X",
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%X.%04X-%X.%04X-%X.%04X",
     BITS_SLICE(daytimes,2,3), red, BITS_SLICE(daytimes,1,2), green, BITS_SLICE(daytimes,0,1), blue );
   return aoosp_prt_buf;
 }
 
 
 /*!
-    @brief  Converts an SAID PWM triplet to a string.
+    @brief  Converts an SAID PWM triplet (from READPWMCHN) to a string.
     @param  red
             The 16 bit PWM setting for the red driver.
     @param  green
             The 16 bit PWM setting for the green driver.
     @param  blue
             The 16 bit PWM setting for the blue driver.
-    @return A string consisting of three parts separated by slashes.
+    @return A string consisting of three parts separated by dashes.
             The three parts are for the red, green and blue and
             have the same rendering: "####" (4 hex digits).
-            Example "0000/FFFF/0000".
+            Example "0000-FFFF-0000".
     @note   For RGBi use aoosp_prt_pwm_rgbi.
             At the moment there is no further detailing 
             of the meaning of the bits
@@ -185,7 +207,7 @@ char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t d
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_pwm_said(uint16_t red, uint16_t green, uint16_t blue) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%04X:%04X:%04X", red, green, blue );
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%04X-%04X-%04X", red, green, blue );
   return aoosp_prt_buf;
 }
 
@@ -224,16 +246,16 @@ char * aoosp_prt_com_sio2(uint8_t com) {
     @brief  Converts an RGBi communication settings to a string.
     @param  com
             The 4 bit communication setting.
-    @return A string consisting of two parts separated by a slash.
+    @return A string consisting of two parts separated by a dash.
             The two parts are for SIO1 and SIO2 and 
             have the same rendering: lvds, eol, mcu, can.
-            Example "lvds/lvds".
+            Example "lvds-lvds".
     @note   For SAID use aoosp_prt_com_said.
             Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_com_rgbi(uint8_t com) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s:%s",
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s",
     aoosp_prt_com_names[BITS_SLICE(com,2,4)], aoosp_prt_com_names[BITS_SLICE(com,0,2)]  );
   return aoosp_prt_buf;
 }
@@ -243,17 +265,17 @@ char * aoosp_prt_com_rgbi(uint8_t com) {
     @brief  Converts an SAID communication settings to a string.
     @param  com
             The 6 bit communication setting.
-    @return A string consisting of three parts separated by slashes.
+    @return A string consisting of three parts separated by dashes.
             The outer two parts are for SIO1 and SIO2 and 
             have the same rendering: lvds, eol, mcu, can.
             The inner part is bidir or loop.
-            Example "lvds/loop/lvds".
+            Example "lvds-loop-lvds".
     @note   For RGBi use aoosp_prt_com_rgbi.
             Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_com_said(uint8_t com) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s:%s:%s",
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_com_names[BITS_SLICE(com,2,4)], BITS_SLICE(com,4,5)?"loop":"bidir", aoosp_prt_com_names[BITS_SLICE(com,0,2)]  );
   return aoosp_prt_buf;
 }
@@ -263,21 +285,20 @@ char * aoosp_prt_com_said(uint8_t com) {
     @brief  Converts an OSP setup byte to a string.
     @param  flags
             The 8 bit setup byte.
-    @return A string consisting of two parts separated by a slash.
+    @return A string consisting of two parts separated by a dash.
             Part 1 bits 4-7: 1 char for PWM fast, mcu spi CLK inverted, CRC check enabled, Temp sensor slow rate.
             Part 2 bits 0-3: 1 char for Communication, LED, Over temperature, Under voltage
-            Example "pccT/clOU".
+            Example "pccT-clOU".
     @note   Value typically comes from READSETUP.
     @note   Only use one char* returning pretty print function at a time.
 */
 char * aoosp_prt_setup(uint8_t flags) {
-  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s/%s",
+  snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s",
     aoosp_prt_setup_flags48[BITS_SLICE(flags,4,8)], aoosp_prt_stat_flags04[BITS_SLICE(flags,0,4)]  );
   return aoosp_prt_buf;
 }
 
 
-// 1D 9F 95 6F 42 00 00 00
 /*!
     @brief  Converts a byte array (like a telegram) to a string.
     @param  buf

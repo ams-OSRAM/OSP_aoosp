@@ -118,7 +118,7 @@ aoresult_t aoosp_send_goactive(uint16_t addr );
 
 
 // Telegram 06 GODEEPSLEEP switches the state of the addressed node to deep sleep.
-/* Not yet implemented */
+aoresult_t aoosp_send_godeepsleep(uint16_t addr);
 
 
 //  +-------+-------------------+-----------------------+-----------+
@@ -157,7 +157,9 @@ aoresult_t aoosp_send_identify(uint16_t addr, uint32_t * id );
 
 
 // Telegram 0A ASKTINFO - returns the aggregated max and min temperature across the daisy chain.
-/* Not yet implemented */
+aoresult_t aoosp_send_asktinfo(uint16_t addr, uint8_t * tmin, uint8_t * tmax);
+// returns the aggregated max and min temperature across the daisy chain, starts with passed initial values for tmin and tmax.
+aoresult_t aoosp_send_asktinfo_init(uint16_t addr, uint8_t * tmin, uint8_t * tmax);
 
 
 // Telegram 0B ASKVINFO - returns the aggregated max and min voltage headroom among all drivers the daisy chain.
@@ -420,8 +422,12 @@ aoresult_t aoosp_send_readcomst(uint16_t addr, uint8_t * com );
 /* Reserved telegram ID */
 
 
-// Telegram 46 READLEDST - asks the addressed node to respond LED status (RO red open, GO, BO, RS red short, GS, BS).
-/* Not yet implemented */
+// Telegram 46 (variant 0) READLEDST - asks the addressed node to respond LED status (red/grn/blu open/short).
+aoresult_t aoosp_send_readledst(uint16_t addr, uint8_t * ledst);
+
+
+// Telegram 46 (variant 1) READLEDSTCHN - asks the addressed node to respond LED status (red/grn/blu open/short) for a channel.
+aoresult_t aoosp_send_readledstchn(uint16_t addr, uint8_t chn, uint8_t * ledst);
 
 
 // Telegram 47 -- no SETLEDST
@@ -703,8 +709,8 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 7F SETTESTPW with SR
-/* Not yet implemented */
+// Telegram 7F SETTESTPW with SR - sets the test password of the addressed node.
+aoresult_t aoosp_send_settestpw_sr(uint16_t addr, uint64_t pw, uint8_t * temp, uint8_t * stat);
 
 
 #endif

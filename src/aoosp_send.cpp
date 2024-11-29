@@ -76,11 +76,28 @@ typedef struct aoosp_tele_s { uint8_t data[AOOSP_TELE_MAXSIZE]; uint8_t size; } 
 static aoosp_loglevel_t aoosp_loglevel = aoosp_loglevel_none;
 
 
+/*!
+    @brief  Sets the amount of logging for the aoosp_send_xxx() functions.
+    @param  level
+            aoosp_loglevel_none - Nothing is logged (default)
+            aoosp_loglevel_args - Logging of sent and received telegram arguments
+            aoosp_loglevel_tele - Also logs raw (sent and received) telegram bytes
+    @note   Logging means "print to Serial".
+    @note   If arguments are logged, by default the SAID interpretation is shown,
+            the RGBI interpretation is appended in parenthesis.
+    @note   Current log level is observable via aoosp_loglevel_get().
+    @note   Default log level is aoosp_loglevel_none.
+*/
 void aoosp_loglevel_set(aoosp_loglevel_t level) {
   aoosp_loglevel = level;
 }
 
 
+/*!
+    @brief  Gets the log level (amount of logging) for the aoosp_send_xxx() functions.
+    @return Active log level
+    @note   See aoosp_loglevel_set() for details.
+*/
 aoosp_loglevel_t aoosp_loglevel_get() {
   return aoosp_loglevel;
 }
@@ -634,6 +651,67 @@ aoresult_t aoosp_send_goactive(uint16_t addr) {
 // Telegram 06 GODEEPSLEEP
 
 
+static aoresult_t aoosp_con_godeepsleep(aoosp_tele_t * tele, uint16_t addr) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x06; // GODEEPSLEEP
+  //if( respsize ) *respsize = 4+0;
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends an GODEEPSLEEP telegram.
+            This switches the state of the addressed node to deep sleep 
+            (e.g. LEDs are off).
+    @param  addr
+            The address to send the telegram to (unicast),
+            (use 0 for broadcast, or 3F0..3FE for group).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_godeepsleep(uint16_t addr) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_godeepsleep(&tele,addr);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("godeepsleep(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n");
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
 // ==========================================================================
 // Telegram 07 IDENTIFY
 
@@ -731,8 +809,205 @@ aoresult_t aoosp_send_identify(uint16_t addr, uint32_t * id) {
 // ==========================================================================
 // Telegram 08 P4ERRBIDIR
 // Telegram 09 P4ERRLOOP
-// Telegram 0A ASKTINFO (datasheet: ASK_TINFO)
-// Telegram 0B ASKVINFO (datasheet: ASK_VINFO)
+
+
+// ==========================================================================
+// Telegram 0A ASKTINFO
+static aoresult_t aoosp_con_asktinfo(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x0A; // ASKTINFO
+  if( respsize ) *respsize = 4+2; //  tmin, tmax
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_asktinfo(aoosp_tele_t * tele, uint8_t * tmin, uint8_t * tmax) {
+  // Set constants
+  const uint8_t payloadsize = 2;
+  // Check telegram consistency
+  if( tele==0 || tmin==0 || tmax==0            ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x0A      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *tmax= tele->data[3];
+  *tmin= tele->data[4];
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a ASKTINFO telegram and receives its response.
+            This is a serial cast accumulating the minimum and maximum
+            temperature over the OSP chain (from node `addr` to last one).
+    @param  addr
+            The address to send the telegram to (serialcast).
+    @param  tmin
+            Output parameter returning the minimum temperature of the OSP 
+            chain (from node `addr` to last one).
+    @param  tmax
+            Output parameter returning the maximum temperature of the OSP 
+            chain (from node `addr` to last one).
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Generally, the telegram is sent to the first node (addr=001),
+            but is possible to user a higher address.
+    @note   Temperature is returned as raw values; use aoosp_prt_temp_rgbi()
+            or aoosp_prt_temp_said() to convert to Celsius.
+    @note   Different type of node have a different notion of raw temperature.
+            As a result, the accumulation with this serial cast only makes 
+            sense if all nodes have the same type (IDENTIFY).
+*/
+aoresult_t aoosp_send_asktinfo(uint16_t addr, uint8_t * tmin, uint8_t * tmax) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_asktinfo(&tele,addr,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_asktinfo(&resp, tmin, tmax);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("asktinfo(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" tmin=0x%02X=%d tmax=0x%02X=%d", *tmin, aoosp_prt_temp_said(*tmin), *tmax, aoosp_prt_temp_said(*tmax) );
+    Serial.printf(" (%d, %d)\n", aoosp_prt_temp_rgbi(*tmin), aoosp_prt_temp_rgbi(*tmax) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
+// Telegram 0A ASKTINFO with INIT
+
+
+static aoresult_t aoosp_con_asktinfo_init(aoosp_tele_t * tele, uint16_t addr, uint8_t tmin, uint8_t tmax, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 2; // initial tmin and tmax
+  const uint8_t tid = 0x0A; // ASKTINFO
+  if( respsize ) *respsize = 4+2; // tmin, tmax
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = tmax;
+  tele->data[4] = tmin;
+
+  tele->data[5] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a ASKTINFO telegram with initial values for tmin and tmax
+            and receives its response.
+    @param  addr
+            The address to send the telegram to (serialcast).
+    @param  tmin
+            Input parameter passing the initial value for tmin.
+            Output parameter returning the minimum temperature of the OSP 
+            chain (from node `addr` to last one).
+    @param  tmax
+            Input parameter passing the initial value for tmax.
+            Output parameter returning the maximum temperature of the OSP 
+            chain (from node `addr` to last one).
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
+    @note   This is the extended version of aoosp_send_asktinfo().
+            See there for details.
+*/
+aoresult_t aoosp_send_asktinfo_init(uint16_t addr, uint8_t * tmin, uint8_t * tmax) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_asktinfo_init(&tele,addr,*tmin,*tmax,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_asktinfo(&resp, tmin, tmax);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("asktinfo_ex(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" tmin=0x%02X=%d tmax=0x%02X=%d", *tmin, aoosp_prt_temp_said(*tmin), *tmax, aoosp_prt_temp_said(*tmax) );
+    Serial.printf(" (%d, %d)\n", aoosp_prt_temp_rgbi(*tmin), aoosp_prt_temp_rgbi(*tmax) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+
+
+
+
+
+
+
+
+// ==========================================================================
+// Telegram 0B ASKVINFO
 
 
 // ==========================================================================
@@ -1232,7 +1507,7 @@ aoresult_t aoosp_send_burn(uint16_t addr) {
 
 
 // ==========================================================================
-// Telegram 18 I2CREAD (datasheet: I2C_READ)
+// Telegram 18 I2CREAD
 
 
 static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t count) {
@@ -1266,7 +1541,7 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 
 /*!
-    @brief  Sends a I2CREAD telegram (datasheet: I2C_READ).
+    @brief  Sends a I2CREAD telegram.
             This requests a SAID to master a read on its I2C bus.
     @param  addr
             The address to send the telegram to (unicast),
@@ -1315,7 +1590,7 @@ aoresult_t aoosp_send_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
 
 
 // ==========================================================================
-// Telegram 19 I2CWRITE (datasheet: I2C_WRITE)
+// Telegram 19 I2CWRITE
 
 
 static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t * buf, int count) {
@@ -1351,7 +1626,7 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 
 /*!
-    @brief  Sends a I2CWRITE telegram (datasheet: I2C_WRITE).
+    @brief  Sends a I2CWRITE telegram.
             This requests a SAID to master a write on its I2C bus.
     @param  addr
             The address to send the telegram to (unicast),
@@ -1408,7 +1683,7 @@ aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
 
 
 // ==========================================================================
-// Telegram 1E READLAST (datasheet: READ_LAST)
+// Telegram 1E READLAST
 
 
 static aoresult_t aoosp_con_readlast(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
@@ -1454,7 +1729,7 @@ static aoresult_t aoosp_des_readlast(aoosp_tele_t * tele, uint8_t * buf, int siz
 
 
 /*!
-    @brief  Sends a READLAST telegram and receives its response (datasheet: READ_LAST).
+    @brief  Sends a READLAST telegram and receives its response.
             This requests a SAID to return the result of the last I2CREAD.
     @param  addr
             The address to send the telegram to (unicast).
@@ -1524,7 +1799,7 @@ static aoresult_t aoosp_con_goactive_sr(aoosp_tele_t * tele, uint16_t addr, uint
   // Set constants
   const uint8_t payloadsize = 0;
   const uint8_t tid = 0x25; // GOACTIVE_SR
-  if( respsize ) *respsize = 4+2;
+  if( respsize ) *respsize = 4+2; // temp,stat
 
   // Build telegram
   tele->size    = payloadsize+4;
@@ -1559,7 +1834,7 @@ static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uin
 
 
 /*!
-    @brief  Sends an GOACTIVE_SR telegram and receives its status response.
+    @brief  Sends an GOACTIVE_SR telegram and receives a status response.
             This switches the state of the addressed node to active (allowing to switch on LEDs).
     @param  addr
             The address to send the telegram to (unicast).
@@ -1631,7 +1906,7 @@ aoresult_t aoosp_send_goactive_sr(uint16_t addr, uint8_t * temp, uint8_t * stat)
 
 
 // ==========================================================================
-// Telegram 40 READSTAT (datasheet: READST or READSTATUS)
+// Telegram 40 READSTAT
 
 
 static aoresult_t aoosp_con_readstat(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
@@ -1727,7 +2002,7 @@ aoresult_t aoosp_send_readstat(uint16_t addr, uint8_t * stat) {
 
 
 // ==========================================================================
-// Telegram 42 READTEMPSTAT (datasheet: READTEMPST)
+// Telegram 42 READTEMPSTAT
 
 
 static aoresult_t aoosp_con_readtempstat(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
@@ -1923,7 +2198,212 @@ aoresult_t aoosp_send_readcomst(uint16_t addr, uint8_t * com) {
 
 // ==========================================================================
 // Telegram 45 -- no SETCOMST
-// Telegram 46 READLEDST
+
+
+// ==========================================================================
+// Telegram 46 READLEDST (RGBi only)
+
+
+static aoresult_t aoosp_con_readledst(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x46; // READLEDST
+  if( respsize ) *respsize = 4+1; // ledst
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_readledst(aoosp_tele_t * tele, uint8_t * ledst) {
+  // Set constants
+  const uint8_t payloadsize = 1;
+  // Check telegram consistency
+  if( tele==0 || ledst==0                      ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x46      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *ledst = tele->data[3];
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a READLEDST telegram and receives its response.
+            Asks the addressed node to respond with its LED status;
+            whether the R, G, or B is "open" or "shorted".
+    @param  addr
+            The address to send the telegram to (unicast).
+    @param  ledst
+            Output parameter returning the LED status of the addressed node.
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
+    @note   A node must be in state "active" in order for the LEDs to be driven.
+    @note   "Open" means the driver output pin has a low voltage:
+            either the output pin is dangling (not connected at all), 
+            or the pin is grounded (or the LED is blown open).
+    @note   "Shorted" means the driver output pin has a high voltage:
+            the output pin connected to VCC (or the LED is short circuited).
+    @note   Although this telegram ID (46) is the same as for READLEDSTCHN, the 
+            payload is specific for single channel PWM devices like RGBi's. 
+            For multi channel PWM devices, like SAID, use READLEDSTCHN.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_readledst(uint16_t addr, uint8_t * ledst) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_readledst(&tele,addr,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_readledst(&resp, ledst);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("readledst(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" ledst=0x%02X=%s\n", *ledst, aoosp_prt_ledst(*ledst) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
+// Telegram 46 READLEDSTCHN (SAID only)
+
+
+static aoresult_t aoosp_con_readledstchn(aoosp_tele_t * tele, uint16_t addr, uint8_t chn, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                    ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr)     ) return aoresult_osp_addr;
+  if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
+
+  // Set constants
+  const uint8_t payloadsize = 1;
+  const uint8_t tid = 0x46; // READLEDST
+  if( respsize ) *respsize = 4+1; // ledst
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = chn;
+
+  tele->data[4] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_readledstchn(aoosp_tele_t * tele, uint8_t * ledst) {
+  // Set constants
+  const uint8_t payloadsize = 1;
+  // Check telegram consistency
+  if( tele==0 || ledst==0                      ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x46      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *ledst = tele->data[3];
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a READLEDSTCHN telegram and receives its response.
+            Asks the addressed node to respond with its LED status on 
+            channel `chn`; whether the R, G, or B is "open" (not connected) 
+            or "short" (connected to +5V).
+    @param  addr
+            The address to send the telegram to (unicast).
+    @param  chn
+            The channel of the node for which the LED status is requested.
+    @param  ledst
+            Output parameter returning the LED status of the addressed node.
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
+    @note   See the notes for `aoosp_send_readledst`.
+    @note   Although this telegram ID (46) is the same as for READLEDST, the 
+            payload is specific for multi channel PWM devices, like SAID.
+            For single channel PWM devices like RGBi's, use READLEDST.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_readledstchn(uint16_t addr, uint8_t chn, uint8_t * ledst) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_readledstchn(&tele,addr,chn,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_readledstchn(&resp, ledst);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("readledstchn(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" ledst=0x%02X=%s\n", *ledst, aoosp_prt_ledst(*ledst) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
 // Telegram 47 -- no SETLEDST
 
 
@@ -2252,7 +2732,7 @@ static aoresult_t aoosp_des_readpwm(aoosp_tele_t * tele, uint16_t *red, uint16_t
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameters are set.
     @note   Although this telegram ID (4E) is the same as for READPWMCHN, the 
-            contents are specific for single channel PWM devices like RGBi's. 
+            payload is specific for single channel PWM devices like RGBi's. 
             For multi channel PWM devices, like SAID, use READPWMCHN.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -2292,7 +2772,7 @@ aoresult_t aoosp_send_readpwm(uint16_t addr, uint16_t *red, uint16_t *green, uin
 
 
 // ==========================================================================
-// Telegram 4E READPWMCHN (SAID only) (datasheet: READPWM_CHN)
+// Telegram 4E READPWMCHN (SAID only)
 
 
 static aoresult_t aoosp_con_readpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_t chn, uint8_t * respsize) {
@@ -2359,7 +2839,7 @@ static aoresult_t aoosp_des_readpwmchn(aoosp_tele_t * tele, uint16_t *red, uint1
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameters are set.
     @note   Although this telegram ID (4E) is the same as for READPWM, the
-            contents are specific for multi channel PWM devices like SAIDs. 
+            payload is specific for multi channel PWM devices like SAIDs. 
             For single channel PWM devices, like RGBi, use READPWM.
     @note   The meaning of the 16 bits varies, they are not detailed 
             here at telegram level.
@@ -2457,7 +2937,7 @@ static aoresult_t aoosp_con_setpwm(aoosp_tele_t * tele, uint16_t addr, uint16_t 
     @return aoresult_ok if all ok, otherwise an error code.
     @note   A node must be active in order for the PWMs to switch on.
     @note   Although this telegram ID (4F) is the same as for SETPWMCHN, the 
-            contents are specific for single channel PWM devices like RGBi's. 
+            payload is specific for single channel PWM devices like RGBi's. 
             For multi channel PWM devices, like SAID, use SETPWMCHN.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -2490,7 +2970,7 @@ aoresult_t aoosp_send_setpwm(uint16_t addr, uint16_t red, uint16_t green, uint16
 
 
 // ==========================================================================
-// Telegram 4F SETPWMCHN (SAID only) (datasheet: SETPWM_CHN)
+// Telegram 4F SETPWMCHN (SAID only)
 
 
 static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_t chn, uint16_t red, uint16_t green, uint16_t blue) {
@@ -2544,7 +3024,7 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
     @return aoresult_ok if all ok, otherwise an error code.
     @note   A node must be active in order for the PWMs to switch on.
     @note   Although this telegram ID (4F) is the same as for SETPWM, the 
-            contents are specific for multi channel PWM devices like SAIDs. 
+            payload is specific for multi channel PWM devices like SAIDs. 
             For single channel PWM devices, like RGBi, use SETPWM.
     @note   The meaning of the 16 bits varies, they are not detailed 
             here at telegram level. For SAID the 15 MSB bits form the PWM
@@ -2581,7 +3061,7 @@ aoresult_t aoosp_send_setpwmchn(uint16_t addr, uint8_t chn, uint16_t red, uint16
 
 
 // ==========================================================================
-// Telegram 50 READCURCHN (datasheet: READ_CUR_CH)
+// Telegram 50 READCURCHN
 
 
 static aoresult_t aoosp_con_readcurchn(aoosp_tele_t * tele, uint16_t addr, uint8_t chn, uint8_t * respsize) {
@@ -2687,7 +3167,7 @@ aoresult_t aoosp_send_readcurchn(uint16_t addr, uint8_t chn, uint8_t *flags, uin
 
 
 // ==========================================================================
-// Telegram 51 SETCURCHN (datasheet: SET_CUR_CH)
+// Telegram 51 SETCURCHN
 
 
 #define AOOSP_CUR_NORM_OK(v) ( 0b0000<=(v) && (v)<=0b0100 )
@@ -2775,14 +3255,14 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 
 
 // ==========================================================================
-// Telegram 52 READTCOEFF (datasheet: READ_T_COEFF)
-// Telegram 53 SETTCOEFF (datasheet: SET_T_COEFF)
-// Telegram 54 READADC (datasheet: READ_ADC)
-// Telegram 55 SETADC (datasheet: SET_ADC)
+// Telegram 52 READTCOEFF
+// Telegram 53 SETTCOEFF
+// Telegram 54 READADC
+// Telegram 55 SETADC
 
 
 // ==========================================================================
-// Telegram 56 READI2CCFG (datasheet: READ_I2C_CFG, aka as I2C status)
+// Telegram 56 READI2CCFG (aka I2C status)
 
 
 static aoresult_t aoosp_con_readi2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
@@ -2879,7 +3359,7 @@ aoresult_t aoosp_send_readi2ccfg(uint16_t addr, uint8_t *flags, uint8_t *speed )
 
 
 // ==========================================================================
-// Telegram 57 SETI2CCFG (datasheet: WRITE_I2C_CFG, aka as I2C status)
+// Telegram 57 SETI2CCFG (aka I2C status)
 
 
 static aoresult_t aoosp_con_seti2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_t flags, uint8_t speed ) {
@@ -3164,11 +3644,11 @@ aoresult_t aoosp_send_setotp(uint16_t addr, uint8_t otpaddr, uint8_t * buf, int 
 
 
 // ==========================================================================
-// Telegram 5A READTESTDATA (datasheet: TESTDATAREAD)
+// Telegram 5A READTESTDATA
 
 
 // ==========================================================================
-// Telegram 5B SETTESTDATA (datasheet: TESTDATASET)
+// Telegram 5B SETTESTDATA
 
 
 static aoresult_t aoosp_con_settestdata(aoosp_tele_t * tele, uint16_t addr, uint16_t data ) {
@@ -3240,13 +3720,13 @@ aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data ) {
 
 
 // ==========================================================================
-// Telegram 5C READADCDAT  (datasheet: READ_ADC_DAT)
+// Telegram 5C READADCDAT
 // Telegram 5D TESTSCAN
 // Telegram 5E -- no GETTESTPW
 
 
 // ==========================================================================
-// Telegram 5F SETTESTPW (datasheet: TESTPW)
+// Telegram 5F SETTESTPW
 
 
 static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64_t pw) {
@@ -3292,6 +3772,8 @@ static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64
     @note   The TETSPW must be unset (eg set to 0) for normal operation, 
             because when the test password is set the node garbles 
             forwarded telegrams. 
+    @note   Because of the impact on the node's behavior, it might be wise
+            to use the variant with acknowledge (SETTESTPW_SR).
     @note   The term "test password" is a misnomer, with the correct password
             the host is authenticated, but not in test mode. The latter is
             a next step via SETTESTDATA.
@@ -3347,4 +3829,115 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw) {
 // Telegram 75 SETADC_SR
 // Telegram 77 SETI2CCFG_SR
 // Telegram 79 SETOTP_SR
-// Telegram 7F TESTPW_SR
+
+
+// ==========================================================================
+// Telegram 7F SETTESTPW_SR
+
+
+static aoresult_t aoosp_con_settestpw_sr(aoosp_tele_t * tele, uint16_t addr, uint64_t pw, uint8_t * respsize ) {
+  // Check input parameters
+  if( tele==0                         ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr)          ) return aoresult_osp_addr;
+  if( pw & ~0x0000FFFFFFFFFFFFULL     ) return aoresult_osp_arg;
+  if( pw == AOOSP_SAID_TESTPW_UNKNOWN ) Serial.printf("WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it\n");
+
+  // Set constants
+  const uint8_t payloadsize = 6;
+  const uint8_t tid = 0x7F; // SETTESTPW_SR
+  if( respsize ) *respsize = 4+2; // temp,stat
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  memcpy( &(tele->data[3]), &pw, 6); // 3..8
+
+  tele->data[9] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_settestpw_sr(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2;
+  // Check telegram consistency
+  if( tele==0 || stat==0                       ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x7F      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *temp = tele->data[3];
+  *stat = tele->data[4];
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a SETTESTPW_SR telegram and receives a status response.
+            Sets the password of the addressed node.
+    @param  addr
+            The address to send the telegram to (unicast),
+            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
+    @param  pw
+            The 48 bit password.
+    @param  temp
+            Output parameter returning the raw temperature of the addressed node.
+    @param  stat
+            Output parameter returning the status of the addressed node.
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   Ask ams-OSRAM for the password, see eg aoosp_said_testpw_get().
+    @note   This register is not for normal use; it is needed to enter 
+            test mode (SETTESTDATA) for the manufacturer. The exception 
+            to the rule is that it is also needed to make SETOTP work.
+    @note   The TETSPW must be unset (eg set to 0) for normal operation, 
+            because when the test password is set the node garbles 
+            forwarded telegrams. 
+    @note   The term "test password" is a misnomer, with the correct password
+            the host is authenticated, but not in test mode. The latter is
+            a next step via SETTESTDATA.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_settestpw_sr(uint16_t addr, uint64_t pw, uint8_t * temp, uint8_t * stat) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_settestpw_sr(&tele,addr,pw,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_settestpw_sr(&resp, temp, stat);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("settestpw_sr(0x%03X,%s)",addr,aoosp_prt_bytes(&pw,6) );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" temp=0x%02X=%d stat=0x%02X=%s", *temp, aoosp_prt_temp_said(*temp), *stat, aoosp_prt_stat_said(*stat) );
+    Serial.printf(" (%d, %s)\n",  aoosp_prt_temp_rgbi(*temp), aoosp_prt_stat_rgbi(*stat) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+

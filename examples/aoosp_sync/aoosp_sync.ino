@@ -112,9 +112,9 @@ void demo_sync() {
   #endif
 
   // Configure SAID-1 channel-0 to wait for SYNC
-  result= aoosp_send_setcurchn (0x001, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(001,0"); 
+  result= aoosp_send_setcurchn (0x001, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(001,0)"); 
   // Configure SAID-2 channel-0 to wait for SYNC
-  result= aoosp_send_setcurchn (0x002, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(002,0"); 
+  result= aoosp_send_setcurchn (0x002, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(002,0)"); 
 
   // Configure SAID-1 channel-0 to go green
   Serial.printf("SAID-1 channel-0 to green\n");

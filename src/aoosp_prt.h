@@ -32,10 +32,12 @@ int    aoosp_prt_temp_said(uint8_t temp);
 
 // Converts a node state to a string (example "ACTIVE").
 char * aoosp_prt_stat_state(uint8_t stat);     
-// Converts an RGBi status byte to a string (example "SLEEP/oL/clou").
+// Converts an RGBi status byte to a string (example "SLEEP-oL-clou").
 char * aoosp_prt_stat_rgbi(uint8_t stat);      
-// Converts an SAID status byte to a string (example "ACTIVE/tv/clou").
+// Converts an SAID status byte to a string (example "ACTIVE-tv-clou").
 char * aoosp_prt_stat_said(uint8_t stat);      
+// Converts a LED status byte to a string (eample Example "os-oS-Os").
+char * aoosp_prt_ledst(uint8_t ledst);
 
 // Converts an RGBi PWM quartet to a string (example "0.0000/1.7FFF/0.0000").
 char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t daytimes); 
@@ -46,12 +48,12 @@ char * aoosp_prt_pwm_said(uint16_t red, uint16_t green, uint16_t blue);
 char * aoosp_prt_com_sio1(uint8_t com);        
 // Converts a communication settings to a string for SIO2 (example "LVDS").
 char * aoosp_prt_com_sio2(uint8_t com);        
-// Converts an RGBi communication settings to a string (example "LVDS/LVDS").
+// Converts an RGBi communication settings to a string (example "LVDS-LVDS").
 char * aoosp_prt_com_rgbi(uint8_t com);        
-// Converts an SAID communication settings to a string (example "LVDS/LOOP/LVDS").
+// Converts an SAID communication settings to a string (example "LVDS-LOOP-LVDS").
 char * aoosp_prt_com_said(uint8_t com);        
 
-// Converts an OSP setup byte to a string (example "pccT/clOU").
+// Converts an OSP setup byte to a string (example "pccT-clOU").
 char * aoosp_prt_setup(uint8_t flags);         
 // Converts a byte array (like a telegram) to a string (example "A0 09 02 00 50 6D").
 char * aoosp_prt_bytes(const void * buf, int size ); 
