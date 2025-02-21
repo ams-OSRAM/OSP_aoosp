@@ -41,21 +41,28 @@ static uint64_t aoosp_said_testpw = AOOSP_SAID_TESTPW;
 /*!
     @brief  Functions that need the SAID test password should obtain it 
             through this central store. 
-    @return The SAID password for entering test mode.
+    @return The SAID password to elevated privileges.
     @note   There are three options to get the correct password in the store
             (1) Compile-time: make sure the macro AOOSP_SAID_TESTPW is defined
                 when compiling either by (1a) modify this source file to 
                 include the #define, (1b) have said-password.h and uncomment 
                 the #include, (1c) add -DAOOSP_SAID_TESTPW in build bypassing
                 Arduino IDE.
-            (2) Run-time: call `aoosp_said_testpw_set()` early, eg in setup().
+            (2) Run-time: call `aoosp_said_testpw_set()` early, e.g. in setup().
             (3) Command-time: while running, assuming the command interpreter
-                and the command 'osp' are linked-in, set the password with 
-                (3a) the command 'osp password'; this could even (3b) be part 
+                and the command 'said' are linked-in, set the password with 
+                (3a) the command 'said password'; this could even (3b) be part 
                 of boot.cmd.
             Solutions (1b) and (3a) are the preferred permanent respectively
             temporary solutions. In all cases, ask your contact at ams-OSRAM 
             for the actual password.
+    @note   When the SAID receives the correct password it is said to be
+            in authenticated state: the host has more privileges. These 
+            include changing OTP P2RAM (setotp telegram), executing OTP burn 
+            (burn telegram), entering test mode (settestdata telegram).
+    @note   When the SAID is in authenticated state, not all feature are 
+            operational, like telegram forwarding. To leave authenticated 
+            state, set a wrong password, e.g. aoosp_said_testpw_set(0).
     @note   By default, when the test password is not set, it equals
             AOOSP_SAID_TESTPW_UNKNOWN. A warning will be printed by the
             function that sends a password to a SAID (`aoosp_send_settestpw()`)
@@ -72,7 +79,7 @@ uint64_t aoosp_said_testpw_get() {
             calling `aoosp_testpw_get()`. However, the store must contain
             the password. Either fill it compile-time, or runtime through a 
             call to this function.
-	@note   See `aoosp_said_testpw_get()` for details.
+    @note   See `aoosp_said_testpw_get()` for details.
 */
 void aoosp_said_testpw_set( uint64_t pw ) {
   aoosp_said_testpw = pw;

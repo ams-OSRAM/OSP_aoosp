@@ -189,9 +189,10 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
 //
 // - To actually update the OTP, write all the values that must be burned in the OTP mirror as described above.
 // - Then send the CUST telegram, lower voltage, send the BURN telegram, wait ~5 ms, send the IDLE telegram.
+// - To validate burning: send CUST, GLOAD, LOAD, IDLE and check mirror. See example aoosp_otpburn.ino.
 // - OTP bits can only be updated to 1, never (back) to 0.
 //
-// - Some of the configuration bits (like bit SPI_MODE) are only inspected right after POR, so updating mirror has no effect.
+// - Some of the configuration bits (like bit SPI_MODE) are only inspected right after POR, so updating mirror has little effect.
 
 
 /*!

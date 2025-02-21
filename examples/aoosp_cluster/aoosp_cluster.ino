@@ -66,7 +66,7 @@ drivers are copied to their associated "sub".
 One final warning: to configure the cluster a write to OTP is needed,
 so the SAID test password must be set. If not, you get these messages
   ERROR: SAID test password not configured
-  WARNING: WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
+  WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
 
 
 HARDWARE

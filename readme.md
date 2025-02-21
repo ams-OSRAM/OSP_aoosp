@@ -100,10 +100,18 @@ File > Examples > OSP Telegrams aoosp > ...
   mechanism called "serial cast". This demo also explains serial cast.
 
 - **aoosp_otp** ([source](examples/aoosp_otp))  
-  This demo reads and writes from/to the OTP (one time programmable 
-  memory) of a SAID.
+  This demo reads and writes from/to the mirror of the OTP 
+  (one time programmable memory) of a SAID.
   The _OTP password must be known and enabled_ or this example will not work.
-  
+
+- **aoosp_otpburn** ([source](examples/aoosp_otpburn))  
+  This demo burns a bit in the OTP (one time programmable memory) of a SAID.
+  The `demo aoosp_otp.ino` only writes in the non-persistent OTP mirror, this
+  demo actually updates the OTP persistently.
+  The _OTP password must be known and enabled_ or this example will not work.
+  A lab power supply is needed.
+  A SAID is needed whose OTP can be modified - this can not be undone.
+
 
 ## Module architecture
 
@@ -226,6 +234,14 @@ Some frequent ones have been abstracted in this module.
 
 
 ## Version history _aoosp_
+
+- **2025 February 21, 0.6.0**
+  - Corrected documentation for `aoosp_said_testpw_get()`.
+  - Added `aoosp_send_aread()`, `aoosp_send_load()` and `aoosp_send_gload()`, extended API doc on OTP management.
+  - Corrected mapping to degrees C in `aoosp_prt_temp_said()`.
+  - Added `aoosp_otpburn.ino`.
+  - Explained delay in `aoosp_ledst.ino`.
+  - API documentation improvements, e.g. "(system) status", temperature conversion, i2c count.
 
 - **2024 November 29, 0.5.0**
   - Added example `aoosp_ledst.ino`.

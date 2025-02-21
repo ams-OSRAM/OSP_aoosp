@@ -1,4 +1,4 @@
-// aoosp_otp.ino - demo how to read and write OTP
+// aoosp_otp.ino - demo how to read and write OTP (mirror)
 /*****************************************************************************
  * Copyright 2024 by ams OSRAM AG                                            *
  * All rights are reserved.                                                  *
@@ -24,14 +24,14 @@
 
 /*
 DESCRIPTION
-This demo reads and writes from/to the OTP (one time programmable memory)
-of a SAID.
+This demo reads and writes from/to the mirror of the OTP 
+(one time programmable memory) of a SAID.
 Enable the OTP password (ask supplier) or this example will complain
-  WARNING: WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
+  WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
 Note that OTP writes access the OTP mirror in RAM, not the actual OTP ("ROM").
-The mirror is persistent over RESET, but not over POR (power on reset).
+The mirror is persistent over RESET, but not over PoR (power on reset).
 The latter requires the CUST, BURN, IDLE steps, which are beyond the scope 
-of this example.
+of this example; see example aoosp_otpburn.ino for that.
 
 HARDWARE
 The demo should run on the OSP32 board.

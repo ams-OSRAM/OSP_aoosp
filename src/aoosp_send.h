@@ -186,32 +186,32 @@ aoresult_t aoosp_send_sync(uint16_t addr);
 /* Reserved telegram ID */
 
 
-// Telegram 11 IDLE - part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE; stops burning process.
+// Telegram 11 IDLE - part of OTP burn procedure: deselects the active area of the OTP.
 aoresult_t aoosp_send_idle(uint16_t addr);
 
 
-// Telegram 12 FOUNDRY - part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE; selects OTP area reserved for OSP node manufacturer.
+// Telegram 12 FOUNDRY - part of OTP burn procedure: activates the foundry area in the OTP.
 aoresult_t aoosp_send_foundry(uint16_t addr);
 
 
-// Telegram 13 CUST - part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE; selects OTP area reserved for customers.
+// Telegram 13 CUST - part of OTP burn procedure: activates the customer area in the OTP.
 aoresult_t aoosp_send_cust(uint16_t addr);
 
 
-// Telegram 14 BURN - part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE; activates the burning from OTP mirror to fuses.
+// Telegram 14 BURN - part of OTP burn procedure: burns the fuses of the OTP (copying its RAM mirror to fuses) for the active area.
 aoresult_t aoosp_send_burn(uint16_t addr);
 
 
-// Telegram 15 AREAD
-/* Not yet implemented */
+// Telegram 15 AREAD - part of OTP burn procedure: internal test telegram, performing analogue reads on the OTP fuses.
+aoresult_t aoosp_send_aread(uint16_t addr);
 
 
-// Telegram 16 LOAD
-/* Not yet implemented */
+// Telegram 16 LOAD - part of OTP burn procedure: copies the OTP fuses to the OTP mirror RAM.
+aoresult_t aoosp_send_load(uint16_t addr);
 
 
-// Telegram 17 GLOAD
-/* Not yet implemented */
+// Telegram 17 GLOAD - part of OTP burn procedure: this sets a different guard-band for the subsequent LOAD operation.
+aoresult_t aoosp_send_gload(uint16_t addr);
 
 
 // Telegram 18 I2CREAD - requests a SAID to master a read on its I2C bus.

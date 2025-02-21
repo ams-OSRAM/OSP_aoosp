@@ -63,9 +63,11 @@ static char aoosp_prt_buf[AOOSP_PRT_BUF_SIZE];
     @return The temperature in Celsius.
     @note   For SAID use aoosp_prt_temp_said.
             Value typically comes from READTEMP, READTEMPSTAT or INITxxxx.
+    @note   Temperature [°C]= 1.08 x ADC readout value – 126°C
 */
 int aoosp_prt_temp_rgbi(uint8_t temp) {
-  return ((int)(temp)*108+50)/100-126;
+  // scale up with factor 100 for more accurate division in integer domain
+  return ((int)(temp)*108+50)/100-126; // +50 for rounding (temp is always positive)
 }
 
 
@@ -76,9 +78,13 @@ int aoosp_prt_temp_rgbi(uint8_t temp) {
     @return The temperature in Celsius.
     @note   For RGBi use aoosp_prt_temp_rgbi.
             Value typically comes from READTEMP, READTEMPSTAT or INITxxxx.
+    @note   T(C) = (TEMPVALUE - 116) / 0.85 + 25
 */
 int aoosp_prt_temp_said(uint8_t temp) {
-  return (int)(temp)-86;
+  // scale up with factor 100 for more accurate division in integer domain
+  int temp100= ((int)(temp)-116)*100; 
+  int round= temp100<0 ? -42 : +42; // 42 ~ 85/2
+  return (temp100+round)/85+25;
 }
 
 

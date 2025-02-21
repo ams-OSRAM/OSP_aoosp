@@ -1272,13 +1272,20 @@ static aoresult_t aoosp_con_idle(aoosp_tele_t * tele, uint16_t addr) {
 
 
 /*!
-    @brief  Sends a IDLE telegram.
-            Part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE;
-            stops burning process.
+    @brief  Sends a IDLE telegram, deselecting the active area of the OTP.
     @param  addr
             The address to send the telegram to (unicast).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management telegrams (IDLE, FOUNDRY, CUST, BURN, 
+            AREAD, LOAD, GLOAD, and SETOTP). These requires test mode,
+            which is activated by sending the correct password (SETTESTPW).
+    @note   The OTP controller can be in three modes: idle, foundry or 
+            customer. In idle no OTP area is active, in foundry mode the 
+            foundry area is active and in customer mode the customer area 
+            is active. It is necessary to activate an area when issuing a 
+            BURN or LOAD command. After the BURN or LOAD command, it is 
+            advised to select the idle mode again by sending this telegram.
 */
 aoresult_t aoosp_send_idle(uint16_t addr) {
   // Telegram and result vars
@@ -1336,13 +1343,12 @@ static aoresult_t aoosp_con_foundry(aoosp_tele_t * tele, uint16_t addr) {
 
 
 /*!
-    @brief  Sends a FOUNDRY telegram.
-            Part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE;
-            selects OTP area reserved for the foundry (OSP node manufacturer).
+    @brief  Sends a FOUNDRY telegram, activating the foundry area in the OTP.
     @param  addr
             The address to send the telegram to (unicast).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
 */
 aoresult_t aoosp_send_foundry(uint16_t addr) {
   // Telegram and result vars
@@ -1400,13 +1406,12 @@ static aoresult_t aoosp_con_cust(aoosp_tele_t * tele, uint16_t addr) {
 
 
 /*!
-    @brief  Sends a CUST telegram.
-            Part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE;
-            selects OTP area reserved for OSP node customers.
+    @brief  Sends a CUST telegram, activating the customer area in the OTP.
     @param  addr
             The address to send the telegram to (unicast).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
 */
 aoresult_t aoosp_send_cust(uint16_t addr) {
   // Telegram and result vars
@@ -1464,13 +1469,28 @@ static aoresult_t aoosp_con_burn(aoosp_tele_t * tele, uint16_t addr) {
 
 
 /*!
-    @brief  Sends a BURN telegram.
-            Part of OTP write procedure: CUST/FOUNDRY, BURN, IDLE;
-            activates the burning from OTP mirror to fuses.
+    @brief  Sends a BURN telegram. Burns the fuses of the OTP (copying its 
+            RAM mirror to fuses) for the active area.
     @param  addr
             The address to send the telegram to (unicast).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
+    @note   Recall that aoosp_send_setotp() only writes to the OTP mirror.
+            The BURN command actually copies the mirror to the OTP, making 
+            the contents persistent over power-cycles.
+    @note   Note that OTP fuses can only be burned from 0 to 1, not the
+            other way round.
+    @note   SAID must be in test mode (SETTESTPW), RAM mirror must have 
+            desired contents, Cust_lock bit in OTP (1E.7) shall not be set,
+            the customer area shall be active (by sending CUST), and the SAID
+            supply voltage shall be lowered (2.7V). Only with these 
+            conditions the BURN command will succeed.
+    @note   After the BURN command, switch to IDLE, and leave test mode
+            (SETTESTPW with e.g. 0).
+    @note   One could verify success of burning, by doing a LOAD (from OTP 
+            to RAM mirror) and checking the RAM contents. 
+    @note   Seq: SETTESTPW(x), CUST, lower V, BURN, IDLE, SETTESPW(0), test with LOAD.
 */
 aoresult_t aoosp_send_burn(uint16_t addr) {
   // Telegram and result vars
@@ -1501,9 +1521,214 @@ aoresult_t aoosp_send_burn(uint16_t addr) {
 
 
 // ==========================================================================
-// Telegram 15 AREAD
+// Telegram 15 AREAD (part of OTP management, but for internal tests)
+
+
+static aoresult_t aoosp_con_aread(aoosp_tele_t * tele, uint16_t addr) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x15; // AREAD
+  //if( respsize ) *respsize = 4+0;
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a AREAD telegram. 
+    @param  addr
+            The address to send the telegram to (unicast).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
+    @note   This is an internal test telegram, performing analogue reads 
+            on the OTP fuses, the result is communicated via chip pins.
+            Typically executed after a BURN.
+*/
+aoresult_t aoosp_send_aread(uint16_t addr) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_aread(&tele,addr);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("aread(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n");
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
 // Telegram 16 LOAD
+
+
+static aoresult_t aoosp_con_load(aoosp_tele_t * tele, uint16_t addr) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x16; // LOAD
+  //if( respsize ) *respsize = 4+0;
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a LOAD telegram. Copies the OTP fuses to the OTP mirror RAM.
+    @param  addr
+            The address to send the telegram to (unicast).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
+    @note   There is an implicit LOAD at SAID startup. Giving an explicit 
+            LOAD command makes sense after a BURN, to check if the
+            new contents are successfully burned. 
+    @note   When using LOAD to check if BURN was successful, it is suggested 
+            to send a GLOAD before LOAD; this configures the LOAD command to
+            be more strict (sets different guard-band for LOAD operation), 
+            checking if the fuses are burned thoroughly (robust in time and 
+            over temperature).
+    @note   Before LOAD make sure an area is selected (e.g. by sending CUST).
+            After LOAD command, switch to back IDLE, and leave test mode
+            (SETTESTPW with e.g. 0).
+    @note   Seq: SETTESTPW(x), CUST, [GLOAD,] LOAD, IDLE, SETTESPW(0), check mirror.
+*/
+aoresult_t aoosp_send_load(uint16_t addr) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_load(&tele,addr);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("load(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n");
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
 // Telegram 17 GLOAD
+
+
+static aoresult_t aoosp_con_gload(aoosp_tele_t * tele, uint16_t addr) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x17; // GLOAD
+  //if( respsize ) *respsize = 4+0;
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a GLOAD telegram. This sets a different guard-band for the
+            subsequent LOAD operation, checking if the fuses are burned 
+            thoroughly.
+    @param  addr
+            The address to send the telegram to (unicast).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Part of OTP management, see aoosp_send_idle().
+    @note   This only configures the guard-band for loading, the actual 
+            loading starts by sending LOAD.
+    @note   Before GLOAD make sure an area is selected (e.g. by sending CUST).
+            After LOAD issue an IDLE to reset the strict guard-band.
+    
+*/
+aoresult_t aoosp_send_gload(uint16_t addr) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_gload(&tele,addr);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("gload(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n");
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
 
 
 // ==========================================================================
@@ -1553,8 +1778,9 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
     @param  count
             The number of bytes to read from the I2C device (1..8).
     @return aoresult_ok if all ok, otherwise an error code.
-    @note   After I2CREAD, use READI2CCFG to check if the I2C transaction was successful.
-            Then use READLAST to get the bytes the SAID read from the I2C device.
+    @note   After I2CREAD, use READI2CCFG to check if the I2C transaction 
+            was successful. Then use READLAST to get the bytes the SAID read 
+            from the I2C device.
     @note   The SAID must have the I2C enable bit set in its OTP.
             On startup, send SETCURCHN to power the I2C bus.
     @note   The current implementation only supports the 8 bit mode.
@@ -1663,7 +1889,7 @@ aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
   // Log
   #if AOOSP_LOG_ENABLED
   if( aoosp_loglevel >= aoosp_loglevel_args ) {
-    Serial.printf("i2cwrite(0x%03X,0x%02X,0x%02X,%s)",addr,daddr7,raddr,aoosp_prt_bytes(buf,count));
+    Serial.printf("i2cwrite(0x%03X,0x%02X,0x%02X,0x[%s])",addr,daddr7,raddr,aoosp_prt_bytes(buf,count));
     if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
     if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
       else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
@@ -1736,12 +1962,17 @@ static aoresult_t aoosp_des_readlast(aoosp_tele_t * tele, uint8_t * buf, int siz
     @param  buf
             Pointer to buffer to hold the retrieved bytes.
     @param  size
-            The size of the buffer.
+            The number of bytes to retrieve 
+            (the buffer should have at least that size).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   First send a I2CREAD to get bytes from an I2C device into the SAID.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
     @note   The response telegram always has a size of 8 irrespective
-            of how many bytes were read with I2CREAD.
+            of how many bytes were read with I2CREAD. If less bytes were 
+            read in I2CREAD, they are padded. Typically a call to 
+            `aoosp_send_i2cread8(addr,daddr7,raddr,n)` is followed by a call
+            to `aoosp_send_readlast(addr,buf,n)` with the same `addr` and
+            same `n`.
 */
 aoresult_t aoosp_send_readlast(uint16_t addr, uint8_t * buf, int size) {
   // Telegram and result vars
@@ -1835,13 +2066,14 @@ static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uin
 
 /*!
     @brief  Sends an GOACTIVE_SR telegram and receives a status response.
-            This switches the state of the addressed node to active (allowing to switch on LEDs).
+            This switches the state of the addressed node to active 
+            (allowing to switch on LEDs).
     @param  addr
             The address to send the telegram to (unicast).
     @param  temp
             Output parameter returning the raw temperature of the addressed node.
     @param  stat
-            Output parameter returning the status of the addressed node.
+            Output parameter returning the (system) status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameters are set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
@@ -1956,7 +2188,7 @@ static aoresult_t aoosp_des_readstat(aoosp_tele_t * tele, uint8_t * stat) {
     @param  addr
             The address to send the telegram to (unicast).
     @param  stat
-            Output parameter returning the status of the addressed node.
+            Output parameter returning the (system) status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameter is set.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
@@ -2056,10 +2288,11 @@ static aoresult_t aoosp_des_readtempstat(aoosp_tele_t * tele, uint8_t * temp, ui
     @param  temp
             Output parameter returning the raw temperature of the addressed node.
     @param  stat
-            Output parameter returning the status of the addressed node.
+            Output parameter returning the (system) status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameters are set.
     @note   Converting raw temperature to Celsius depends on the node type.
+            See e.g. `aoosp_prt_temp_rgbi()` or `aoosp_prt_temp_said()`.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readtempstat(uint16_t addr, uint8_t * temp, uint8_t * stat) {
@@ -2259,8 +2492,8 @@ static aoresult_t aoosp_des_readledst(aoosp_tele_t * tele, uint8_t * ledst) {
     @note   "Open" means the driver output pin has a low voltage:
             either the output pin is dangling (not connected at all), 
             or the pin is grounded (or the LED is blown open).
-    @note   "Shorted" means the driver output pin has a high voltage:
-            the output pin connected to VCC (or the LED is short circuited).
+    @note   "Shorted" means the driver output pin has a high voltage: the 
+            output pin is connected to VCC (or the LED is short circuited).
     @note   Although this telegram ID (46) is the same as for READLEDSTCHN, the 
             payload is specific for single channel PWM devices like RGBi's. 
             For multi channel PWM devices, like SAID, use READLEDSTCHN.
@@ -2462,6 +2695,7 @@ static aoresult_t aoosp_des_readtemp(aoosp_tele_t * tele, uint8_t * temp) {
     @return aoresult_ok if all ok, otherwise an error code.
             When returning aoresult_ok, the output parameter is set.
     @note   Converting raw temperature to Celsius depends on the node type.
+            See e.g. `aoosp_prt_temp_rgbi()` or `aoosp_prt_temp_said()`.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_readtemp(uint16_t addr, uint8_t * temp) {
@@ -3892,13 +4126,13 @@ static aoresult_t aoosp_des_settestpw_sr(aoosp_tele_t * tele, uint8_t * temp, ui
     @param  temp
             Output parameter returning the raw temperature of the addressed node.
     @param  stat
-            Output parameter returning the status of the addressed node.
+            Output parameter returning the (system) status of the addressed node.
     @return aoresult_ok if all ok, otherwise an error code.
     @note   Ask ams-OSRAM for the password, see eg aoosp_said_testpw_get().
     @note   This register is not for normal use; it is needed to enter 
             test mode (SETTESTDATA) for the manufacturer. The exception 
             to the rule is that it is also needed to make SETOTP work.
-    @note   The TETSPW must be unset (eg set to 0) for normal operation, 
+    @note   The TESTSPW must be unset (eg set to 0) for normal operation, 
             because when the test password is set the node garbles 
             forwarded telegrams. 
     @note   The term "test password" is a misnomer, with the correct password
