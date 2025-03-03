@@ -369,23 +369,26 @@ char * aoosp_prt_i2ccfg(uint8_t flags) {
     @return The bus speed in bits/second.
             I2C_SPEED  bus freq   kHz
                  0x00    [do not use]
-                 0x01    874090   874  Fast-mode Plus (Fm+)
-                 0x02    506052   506 
-                 0x03    356111   356  Fast-mode (Fm)
-                 0x04    274714   275 
-                 0x05    223604   224 
-                 0x06    188529   189 
-                 0x07    162966   163 
-                 0x08    143507   144 
-                 0x09    128200   128 
-                 0x0A    115843   116 
-                 0x0B    105659   106 
-                 0x0C     97121    97  Standard-mode (Sm)
-                 0x0D     89859    90
-                 0x0E     83608    84
-                 0x0F     78170    78
-    @note   The `speed` value typically comes from READI2CCFG.
+                 0x01    640000   640
+                 0x02    417391   417
+                 0x03    309677   310  Fast-mode (Fm) 400 kHz
+                 0x04    246154   246
+                 0x05    204255   204
+                 0x06    174545   175
+                 0x07    152381   152
+                 0x08    135211   135
+                 0x09    121519   122
+                 0x0A    110345   110
+                 0x0B    101053   101
+                 0x0C     93204    93  Standard-mode (Sm) 100 kHz (default)
+                 0x0D     86486    86
+                 0x0E     80672    81
+                 0x0F     75591    76
+    @note   The `speed` value typically comes from telegram READI2CCFG.
 */
 int aoosp_prt_i2ccfg_speed(uint8_t speed) {
-  return 19230*1000 / ((int)(speed)*8+3) / 2;
+  int div = 2*(speed*8+7);
+  return ( 19200*1000 + div/2 ) / div;
 }
+
+

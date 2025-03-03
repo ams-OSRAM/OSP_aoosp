@@ -235,6 +235,10 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2025 March 3, 0.7.0**
+  - WARNING: AI constants AOOSP_I2CCFG_SPEED_XXX have been renamed to match new formula.
+  - I2C speeds now conform datasheet (formula in `aoosp_prt_i2ccfg_speed()`, `aoosp_send.h`, introduced, `AOOSP_I2CCFG_SPEED_MIN` and `AOOSP_I2CCFG_SPEED_MAX`).
+  
 - **2025 February 21, 0.6.0**
   - Corrected documentation for `aoosp_said_testpw_get()`.
   - Added `aoosp_send_aread()`, `aoosp_send_load()` and `aoosp_send_gload()`, extended API doc on OTP management.

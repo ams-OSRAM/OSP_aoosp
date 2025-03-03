@@ -1,4 +1,4 @@
-// aoosp_prt.cpp - helpers to pretty print OSP telegrams in human readable form
+// aoosp_prt.h - helpers to pretty print OSP telegrams in human readable form
 /*****************************************************************************
  * Copyright 2024 by ams OSRAM AG                                            *
  * All rights are reserved.                                                  *

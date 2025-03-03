@@ -1,4 +1,4 @@
-// aoosp_send.cpp - send command telegrams (and receive response telegrams)
+// aoosp_send.h - send command telegrams (and receive response telegrams)
 /*****************************************************************************
  * Copyright 2024 by ams OSRAM AG                                            *
  * All rights are reserved.                                                  *
@@ -519,31 +519,34 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 /* Not yet implemented */
 
 
-#define AOOSP_I2CCFG_FLAGS_INT      0x08 // Status of INT pin
-#define AOOSP_I2CCFG_FLAGS_12BIT    0x04 // Uses 12 bit addressing mode
-#define AOOSP_I2CCFG_FLAGS_NACK     0x02 // Last i2c transaction ended with NACK
-#define AOOSP_I2CCFG_FLAGS_BUSY     0x01 // Last i2c transaction still busy
-#define AOOSP_I2CCFG_FLAGS_DEFAULT  0x00 // Hardware default in SAID
-
-#define AOOSP_I2CCFG_SPEED_1000kHz  0x01 // Fast-mode Plus (Fm+) nominal frequency for readability
-#define AOOSP_I2CCFG_SPEED_874kHz   0x01
-#define AOOSP_I2CCFG_SPEED_506kHz   0x02 
-#define AOOSP_I2CCFG_SPEED_400kHz   0x03 // Fast-mode (Fm) nominal frequency for readability
-#define AOOSP_I2CCFG_SPEED_356kHz   0x03
-#define AOOSP_I2CCFG_SPEED_275kHz   0x04 
-#define AOOSP_I2CCFG_SPEED_224kHz   0x05 
-#define AOOSP_I2CCFG_SPEED_189kHz   0x06 
-#define AOOSP_I2CCFG_SPEED_163kHz   0x07 
-#define AOOSP_I2CCFG_SPEED_144kHz   0x08 
-#define AOOSP_I2CCFG_SPEED_128kHz   0x09 
-#define AOOSP_I2CCFG_SPEED_116kHz   0x0A 
-#define AOOSP_I2CCFG_SPEED_106kHz   0x0B 
-#define AOOSP_I2CCFG_SPEED_100kHz   0x0C // Standard-mode (Sm) nominal frequency for readability (default)
-#define AOOSP_I2CCFG_SPEED_97kHz    0x0C
-#define AOOSP_I2CCFG_SPEED_90kHz    0x0D
-#define AOOSP_I2CCFG_SPEED_84kHz    0x0E
-#define AOOSP_I2CCFG_SPEED_78kHz    0x0F
-#define AOOSP_I2CCFG_SPEED_DEFAULT  0x0C // Hardware default in SAID
+#define AOOSP_I2CCFG_FLAGS_INT        0x08 // Status of INT pin
+#define AOOSP_I2CCFG_FLAGS_12BIT      0x04 // Uses 12 bit addressing mode
+#define AOOSP_I2CCFG_FLAGS_NACK       0x02 // Last i2c transaction ended with NACK
+#define AOOSP_I2CCFG_FLAGS_BUSY       0x01 // Last i2c transaction still busy
+#define AOOSP_I2CCFG_FLAGS_DEFAULT    0x00 // Hardware default in SAID
+// The constants AOOSP_I2CCFG_SPEED_400kHz, AOOSP_I2CCFG_SPEED_100kHz and
+// AOOSP_I2CCFG_SPEED_MAX, AOOSP_I2CCFG_SPEED_DEFAULT, and AOOSP_I2CCFG_SPEED_MIN
+// are the preferred ones (less likely to change).
+#define AOOSP_I2CCFG_SPEED_MAX      0x01   // Fastest
+#define AOOSP_I2CCFG_SPEED_640kHz     0x01
+#define AOOSP_I2CCFG_SPEED_417kHz     0x02
+#define AOOSP_I2CCFG_SPEED_400kHz   0x03   // Fast-mode (Fm) nominal frequency for readability
+#define AOOSP_I2CCFG_SPEED_310kHz     0x03
+#define AOOSP_I2CCFG_SPEED_246kHz     0x04
+#define AOOSP_I2CCFG_SPEED_204kHz     0x05
+#define AOOSP_I2CCFG_SPEED_175kHz     0x06
+#define AOOSP_I2CCFG_SPEED_152kHz     0x07
+#define AOOSP_I2CCFG_SPEED_135kHz     0x08
+#define AOOSP_I2CCFG_SPEED_122kHz     0x09
+#define AOOSP_I2CCFG_SPEED_110kHz     0x0A
+#define AOOSP_I2CCFG_SPEED_101kHz     0x0B
+#define AOOSP_I2CCFG_SPEED_100kHz   0x0C   // Standard-mode (Sm) nominal frequency for readability (default)
+#define AOOSP_I2CCFG_SPEED_DEFAULT  0x0C   // Hardware default in SAID
+#define AOOSP_I2CCFG_SPEED_93kHz      0x0C
+#define AOOSP_I2CCFG_SPEED_86kHz      0x0D
+#define AOOSP_I2CCFG_SPEED_81kHz      0x0E
+#define AOOSP_I2CCFG_SPEED_76kHz      0x0F
+#define AOOSP_I2CCFG_SPEED_MIN      0x0F   // Slowest
 // Telegram 56 READI2CCFG - asks the addressed node to respond with the I2C configuration/status.
 aoresult_t aoosp_send_readi2ccfg(uint16_t addr, uint8_t *flags, uint8_t * speed );
 

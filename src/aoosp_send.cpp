@@ -1206,7 +1206,8 @@ static aoresult_t aoosp_con_sync(aoosp_tele_t * tele, uint16_t addr) {
 
 /*!
     @brief  Sends a SYNC telegram.
-            A sync event (via external pin or via this command), activates all drivers with pre-configured settings.
+            A sync event (via external pin or via this command), activates 
+            all drivers with pre-configured settings.
     @param  addr
             The address to send the telegram to (unicast).
     @return aoresult_ok if all ok, otherwise an error code.
