@@ -1,6 +1,6 @@
 // aoosp_cur.ino - select the drive current of SAID channels
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -26,7 +26,7 @@
 DESCRIPTION
 This demo configures channel 1 of node 001 to use a high drive current,
 and it configures channel 1 of node 002 to use a low drive current.
-Next it broadcasts setpwm with max brightness (7FFF 7FFF 7FFF). This
+Next it broadcasts setpwm with max brightness (FFFF FFFF FFFF). This
 results in the two white lights with different brightness.
 
 HARDWARE
@@ -35,10 +35,10 @@ Have a cable from the OUT connector to the IN connector.
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR
-The second RGB of SAID OUT (L1.1) shall be bright white.
-The second RGB of SAID IN (L2.1) shall be dim white.
+The second RGB of SAID OUT (L1.1 aka OUT1) shall be bright white.
+The second RGB of SAID IN (L2.1 aka IN1) shall be dim white.
 This is caused by different drive current settings, because
-the setpwm is braodcast.
+the setpwm is broadcast.
 
 OUTPUT
 Welcome to aoosp_cur.ino
@@ -72,19 +72,25 @@ void setcur() {
   Serial.printf("goactive %s\n", aoresult_to_str(result) );
 
   // Set SAID.OUT.CHN1 (all 3 lines) to high driver current (4=24mA)
-  result= aoosp_send_setcurchn(0x001,1/*chn*/,AOOSP_CURCHN_CUR_DEFAULT,4,4,4);
+  result= aoosp_send_setcurchn(0x001,1/*chn*/,AOOSP_CURCHN_FLAGS_DEFAULT,4,4,4);
   Serial.printf("setcurchn(001,1,hi) %s\n", aoresult_to_str(result) );
 
   // Set SAID.IN.CHN1 (all 3 lines) to low drive current (0=1.5mA)
-  result= aoosp_send_setcurchn(0x002,1/*chn*/,AOOSP_CURCHN_CUR_DEFAULT,0,0,0);
+  result= aoosp_send_setcurchn(0x002,1/*chn*/,AOOSP_CURCHN_FLAGS_DEFAULT,0,0,0);
   Serial.printf("setcurchn(002,1,lo) %s\n", aoresult_to_str(result) );
 
   // Set three PWM values of channel 1 to max - for all nodes (broadcast)
-  result= aoosp_send_setpwmchn(0x000, 1/*chn*/, 0x7FFF/*red*/, 0x7FFF/*green*/, 0x7FFF/*blue*/);
+  result= aoosp_send_setpwmchn(0x000, 1/*chn*/, 0xFFFF/*red*/, 0xFFFF/*green*/, 0xFFFF/*blue*/);
   Serial.printf("setpwmchn(000,1,max) %s\n", aoresult_to_str(result) );
 
-  // NOTE: SAID channel 0 has a more powerfull driver than channel 1 or 2;
-  // with the same current setting it is twice as bright.
+  // NOTE: the SAID has three channels 0, 1 and 2. The driver of channel 0 is
+  // twice as powerful than the drivers for channel 1 or 2: with the same 
+  // current setting the drive current is twice as high.
+  //    index    0       1       2       3       4
+  // -------- ------- ------- ------- ------- -------
+  // chn 0       3 mA    6 mA   12 mA   24 mA   48 mA 
+  // chn 1     1.5 mA    3 mA    6 mA   12 mA   24 mA 
+  // chn 2     1.5 mA    3 mA    6 mA   12 mA   24 mA 
 }
 
 

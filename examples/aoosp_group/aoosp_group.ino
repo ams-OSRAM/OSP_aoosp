@@ -1,6 +1,6 @@
 // aoosp_group.ino - two SAIDs in a group
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -34,22 +34,25 @@ the IN connector so that both SAIDs are in the chain.
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR
-The first RGB (L1.0) of SAID OUT and the first RGB of the next SAID
+The first RGB (L1.0 aka OUT0) of SAID OUT and the first RGB of the next SAID
 blink: first both red then both green then repeats.
 
 OUTPUT
 Welcome to aoosp_group.ino
-version: result 0.4.1 spi 0.5.1 osp 0.4.1
+version: result 0.4.5 spi 0.5.8 osp 0.7.0
 
 spi: init
 osp: init
 
 reset(0) ok
-initloop(1) ok last 009
+initloop(1) ok last 002
 clrerror(0) ok
 goactive(0) ok
 setmult(1,grp5) ok
 setmult(2,grp5) ok
+
+setpwmchn(grp5,0,red) ok
+setpwmchn(grp5,0,grn) ok
 
 setpwmchn(grp5,0,red) ok
 setpwmchn(grp5,0,grn) ok
@@ -102,14 +105,14 @@ void group_init() {
 
 void group_red() {
   // Set channel 0 red of group 5 to max
-  aoresult_t result= aoosp_send_setpwmchn(AOOSP_ADDR_GROUP(5), 0/*chn*/, 0x7FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
+  aoresult_t result= aoosp_send_setpwmchn(AOOSP_ADDR_GROUP(5), 0/*chn*/, 0xFFFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
   Serial.printf("setpwmchn(grp5,0,red) %s\n", aoresult_to_str(result) );
 }
 
 
 void group_green() {
   // Set channel 0 green of group 5 to max
-    aoresult_t result= aoosp_send_setpwmchn(AOOSP_ADDR_GROUP(5), 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/);
+    aoresult_t result= aoosp_send_setpwmchn(AOOSP_ADDR_GROUP(5), 0/*chn*/, 0x0000/*red*/, 0xFFFF/*green*/, 0x0000/*blue*/);
   Serial.printf("setpwmchn(grp5,0,grn) %s\n", aoresult_to_str(result) );
 }
 

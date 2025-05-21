@@ -1,6 +1,6 @@
 // aoosp_send.cpp - send command telegrams (and receive response telegrams)
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -996,14 +996,6 @@ aoresult_t aoosp_send_asktinfo_init(uint16_t addr, uint8_t * tmin, uint8_t * tma
 
   return result;
 }
-
-
-
-
-
-
-
-
 
 
 // ==========================================================================
@@ -2120,8 +2112,8 @@ aoresult_t aoosp_send_goactive_sr(uint16_t addr, uint8_t * temp, uint8_t * stat)
 // Telegram 27 -- IDENTIFY has no SR
 // Telegram 28 -- P4ERRBIDIR has no SR
 // Telegram 29 -- P4ERRLOOP has no SR
-// Telegram 2A -- ASK_TINFO has no SR
-// Telegram 2B -- ASK_VINFO has no SR
+// Telegram 2A -- ASKTINFO has no SR
+// Telegram 2B -- ASKVINFO has no SR
 // Telegram 2C -- READMULT has no SR
 // Telegram 2D SETMULT_SR
 // Telegram 2E -- free
@@ -3492,8 +3484,242 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 // ==========================================================================
 // Telegram 52 READTCOEFF
 // Telegram 53 SETTCOEFF
-// Telegram 54 READADC
-// Telegram 55 SETADC
+
+
+// ==========================================================================
+// Telegram 54 READADC - asks the addressed node to respond with the ADC configuration (the data is in telegram 5C).
+
+
+static aoresult_t aoosp_con_readadc(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x54; // READADC
+  if( respsize ) *respsize = 4+1; // flags
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_readadc(aoosp_tele_t * tele, uint8_t *flags ) {
+  // Set constants
+  const uint8_t payloadsize = 1;
+  // Check telegram consistency
+  if( tele==0 || flags==0                      ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x54      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *flags= tele->data[3];
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a READADC telegram and receives its response.
+            Asks the addressed node to respond with its ADC 
+            configuration.
+    @param  addr
+            The address to send the telegram to (unicast).
+    @param  flags
+            Output parameter returning the ADC configuration
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   Use aoosp_send_readadcdat() to retrieve the ADC measurement data, 
+            instead of the ADC measurement configuration.
+    @note   See aoosp_send_setadc() for details.
+*/
+aoresult_t aoosp_send_readadc(uint16_t addr, uint8_t *flags ) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_readadc(&tele,addr,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_readadc(&resp, flags);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("readadc(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" flags=0x%02X\n", *flags );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
+// Telegram 55 SETADC  - configures the ADC to measure Vf of any of the drivers
+
+
+static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t flags) {
+ // Check input parameters
+ if( tele==0                ) return aoresult_outargnull;
+ if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+ // Set constants
+ const uint8_t payloadsize = 1;
+ const uint8_t tid = 0x55; // SETADC
+ //if( respsize ) *respsize = 4+0;
+
+ // Build telegram
+ tele->size    = payloadsize+4;
+
+ tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+ tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+ tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+ tele->data[3] = flags;
+
+ tele->data[4] = aoosp_crc( tele->data , tele->size - 1 );
+
+ return aoresult_ok;
+}
+                     
+                     
+/*!
+    @brief  Sends a SETADC telegram.
+            Configures the ADC of the addressed node.
+    @param  addr
+            The address to send the telegram to (unicast),
+            (use 0 for broadcast, or 3F0..3FE for group).
+    @param  flags
+            The new ADC configuration of the addressed node.
+            Composed from AOOSP_ADC_FLAGS_xxx; typically one 
+            AOOSP_ADC_FLAGS_SYNC_xxx and one AOOSP_ADC_FLAGS_MUX_xxx.
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   A SAID contains an ADC that constantly performs measurements. The 
+            datasheet calls this mode "no ADC measurement is requested", and 
+            technically this means that the ADC mux is in mux mode "auto"
+            (flags=AOOSP_ADC_FLAGS_MUX_AUTO), which is the default. In mux
+            mode auto these items are measured (by automatically changing the 
+            ADC mux in a round robin style)
+              temperature sensor, Vf_R0, Vf_R1, Vf_R2, 
+              temperature sensor, Vf_B0, Vf_B1, Vf_B2, and
+              temperature sensor, Vf_G0, Vf_G1, Vf_G2.
+            The results of the temperature sensor measurement are internally 
+            stored, and available through telegrams READTEMP (or READTEMPSTAT)
+            and ASKTINFO. 
+            The results of nine forward voltage measurements are also 
+            internally stored; all 9 are "maxed" together and stored in one 
+            register (VFMAX), which is available via telegram ASKVINFO.
+            In mux mode auto the ADC has a typical cycle of 18ms. This means 
+            that in the auto cycle temperature is updated every 6ms.
+    @note   If the ADC is configured with AOOSP_ADC_FLAGS_MUX_DRVxx (instead
+            of AOOSP_ADC_FLAGS_MUX_AUTO), then the default ADC cycle is 
+            stopped. The datasheet calls this mode "an ADC measurement is 
+            requested", technically the ADC is in mux mode "driver" (aka 
+            "single driver" or "driver xx"). 
+            In this mode, the device has a short cycle; it alternates between 
+            a temperature sensor measurement and a forward voltage measurement 
+            of driver "xx". In other words, temperature is still available, 
+            but ASKVINFO will give wrong results.
+            In this mode, the reading from driver AOOSP_ADC_FLAGS_MUX_DRVxx
+            is stored in ADCDAT, which is available via telegram READADCDAT.
+            In mux mode driver the ADC has a cycle of 1.8ms. For the very 
+            first measurement after SETADC wait two cycles (because the 
+            switch of the mux to the new driver is somewhere in the middle 
+            of a cycle).
+    @note   In addition to the two mux modes, the ADC has also has two sync 
+            modes: synced with the PWM engine (AOOSP_ADC_FLAGS_SYNC_ENA) or 
+            not (AOOSP_ADC_FLAGS_SYNC_DIS).
+            The former configuration is typical when measuring the Vf of a 
+            LED (because that needs to be done when PWM is high), the latter 
+            configuration is typical when the ADC is used as a generic voltage
+            measurement tool, with an externally applied voltage to the pad.
+    @note   When the ADC is used to measure a forward voltage of an LED, the 
+            PWM high part must be at least 0x600 for the ADC to measure 
+            successfully. 
+    @note   When a driver pin is used as "general purpose" ADC input instead 
+            of a LED driving pin, the driver must be disabled: SETPWMCHN to 0.
+    @note   The (state machine around the) ADC mux can lock up under specific
+            circumstances. A locked mux will no longer switch to another input 
+            when instructed via a SETADC telegram. Also the cycle with the
+            automatic measurements stops. 
+            The locked mux condition arises when the state machine is waiting 
+            for a PWM edge which is not coming. For example (1) a SETADC 
+            followed by SETPWMCHN to 0% can lock the mux (no PWM edge for 
+            synchronizing the ADC conversion), and (2) a SETADC followed by 
+            a SETADC with a different input can lock the mux.
+            To unlock the mux, toggle the SYNC bit:
+              AOOSP_ADC_FLAGS_SYNC_DIS then AOOSP_ADC_FLAGS_SYNC_ENA
+    @note   The ADC measures voltage drops with respect to Vdd (5.0V).
+            In other words, when this function reports 2.0V, the voltage drop 
+            from Vdd (over the LED typically) is 2.0V. This means that the 
+            LED has a Vf=2.0V (see left diagram).
+            If the ADC is not connected to an LED, but used as a generic
+            tool to measure the voltage at the pad, a 2V reported by this
+            function means the pad has a voltage of 3V (see right diagram).
+            
+            Forward voltage of LED            Generic voltage measurement
+            
+            ------+-- 5.0V                    --------- 5.0V
+                  |                                   
+                 LED  Vadc=2.0V => Vf=2.0V    
+                  |                                   
+            SAID--+                           SAID--o   Vadc=2.0V => Vpad=3.0V
+                     
+*/
+aoresult_t aoosp_send_setadc(uint16_t addr, uint8_t flags) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_setadc(&tele, addr, flags);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("setadc(0x%03X,0x%02X)",addr,flags);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n" );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
 
 
 // ==========================================================================
@@ -3956,6 +4182,102 @@ aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data ) {
 
 // ==========================================================================
 // Telegram 5C READADCDAT
+
+
+static aoresult_t aoosp_con_readadcdat(aoosp_tele_t * tele, uint16_t addr, uint8_t * respsize) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+  // Set constants
+  const uint8_t payloadsize = 0;
+  const uint8_t tid = 0x5C; // READADCDAT
+  if( respsize ) *respsize = 4+2; // data
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+static aoresult_t aoosp_des_readadcdat(aoosp_tele_t * tele, uint16_t *adcdat ) {
+  // Set constants
+  const uint8_t payloadsize = 2;
+  // Check telegram consistency
+  if( tele==0 || adcdat==0                     ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x5C      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *adcdat= (tele->data[3] << 8) | (tele->data[4] << 0);
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a READADCDAT telegram and receives its response.
+            Asks the addressed node to respond with its latest
+            ADC measurement result.
+    @param  addr
+            The address to send the telegram to (unicast).
+    @param  adcdat
+            Output parameter returning the ADC measurement
+            of the addressed node.
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameter is set.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+    @note   The ADC must first be configured; 
+            see aoosp_send_setadc() for details.
+    @note   To converting raw ADC to volt see `aoosp_prt_adc()`.
+            
+*/
+aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t *adcdat ) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_readadcdat(&tele,addr,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_readadcdat(&resp, adcdat);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("readadcdat(0x%03X)",addr);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" adcdat=0x%04X=%dmV\n", *adcdat, aoosp_prt_adc(*adcdat) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
 // Telegram 5D TESTSCAN
 // Telegram 5E -- no GETTESTPW
 
@@ -4046,7 +4368,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw) {
 
 // Telegram 60 -- READSTAT with SR
 // Telegram 61 -- no SETSTAT (with SR)
-// Telegram 62 -- READTEMPST with SR
+// Telegram 62 -- READTEMPSTAT with SR
 // Telegram 63 -- no SETTEMPSTAT (with SR)
 // Telegram 64 -- READCOMST with SR
 // Telegram 65 -- no SETCOMST (with SR)

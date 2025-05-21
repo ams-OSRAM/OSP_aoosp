@@ -1,6 +1,6 @@
 // aoosp_send.h - send command telegrams (and receive response telegrams)
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -511,12 +511,26 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 /* Not yet implemented */
 
 
-// Telegram 54 READADC - asks the addressed node to respond with the ADC configuration (the data is in reg 5C).
-/* Not yet implemented */
+#define AOOSP_ADC_FLAGS_SYNC_DIS           0x10
+#define AOOSP_ADC_FLAGS_SYNC_ENA           0x00
+#define AOOSP_ADC_FLAGS_MUX_AUTO           0x00 // ADC not fixed to one driver, but in automatic mode (temp, ASKVINFO)
+#define AOOSP_ADC_FLAGS_MUX_DRVR0          0x01
+#define AOOSP_ADC_FLAGS_MUX_DRVR1          0x02
+#define AOOSP_ADC_FLAGS_MUX_DRVR2          0x03
+#define AOOSP_ADC_FLAGS_MUX_DRVB0          0x04
+#define AOOSP_ADC_FLAGS_MUX_DRVB1          0x05
+#define AOOSP_ADC_FLAGS_MUX_DRVB2          0x06
+#define AOOSP_ADC_FLAGS_MUX_DRVG0          0x07
+#define AOOSP_ADC_FLAGS_MUX_DRVG1          0x08
+#define AOOSP_ADC_FLAGS_MUX_DRVG2          0x09
+#define AOOSP_ADC_FLAGS_MUX_DRVc0(col)     ((col)==0 ? AOOSP_ADC_FLAGS_MUX_DRVR0 : ((col)==1?AOOSP_ADC_FLAGS_MUX_DRVG0:AOOSP_ADC_FLAGS_MUX_DRVB0) ) // 0=R,1=G,2=B
+#define AOOSP_ADC_FLAGS_MUX_DRVcc(col,chn) ( AOOSP_ADC_FLAGS_MUX_DRVc0(col)+(chn) )
+// Telegram 54 READADC - asks the addressed node to respond with the ADC configuration (the data is in telegram 5C).
+aoresult_t aoosp_send_readadc(uint16_t addr, uint8_t * flags);
 
 
-// Telegram 55 SETADC  - configures the ADC to measure Vf of the 3x3 LED.
-/* Not yet implemented */
+// Telegram 55 SETADC  - configures the ADC to measure Vf any of the drivers
+aoresult_t aoosp_send_setadc(uint16_t addr, uint8_t flags);
 
 
 #define AOOSP_I2CCFG_FLAGS_INT        0x08 // Status of INT pin
@@ -571,8 +585,8 @@ aoresult_t aoosp_send_setotp(uint16_t addr, uint8_t otpaddr, uint8_t * buf, int 
 aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data );
 
 
-// Telegram 5C READADCDAT - returns ADC value configured via reg 55.
-/* Not yet implemented */
+// Telegram 5C READADCDAT - returns ADC value configured via telegram 55.
+aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t * adcdat);
 
 
 // Telegram 5D TESTSCAN

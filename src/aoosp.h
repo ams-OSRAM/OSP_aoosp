@@ -1,6 +1,6 @@
 // aoosp.h - constructs OSP telegrams to send; destructs received OSP telegrams
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -23,7 +23,7 @@
 
 
 // Identifies lib version
-#define AOOSP_VERSION "0.7.0"
+#define AOOSP_VERSION "0.8.0"
 
 
 // Include the (headers of the) modules of this app

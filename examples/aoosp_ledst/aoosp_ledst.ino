@@ -1,6 +1,6 @@
 // aoosp_ledst.ino - demonstrates LED (open/short) status (READLEDSTCHN)
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -40,8 +40,8 @@ In Arduino select board "ESP32S3 Dev Module".
 
 At the back of the OSP32 board is a jumper. Its center pin S2_B1 is 
 SAID IN (S2) its B1 (blue of channel 1). By default, the jumper connects 
-S2_B1 to L2.1_B, that is RGB module L2.1 its B channel. There are
-four options for the jumper and thus for runs of this sketch.
+S2_B1 to L2.1_B (aka IN1.B), that is RGB module L2.1 (aka IN1) its B channel. 
+There are four options for the jumper and thus for runs of this sketch.
 - run 1: have the jumper in its default position
 - run 2: remove the jumper; SAID IN channel 1 blue is open
 - run 3: use a jumper wire to connect the center pin to 5V

@@ -1,6 +1,6 @@
 // aoosp_sync.ino - demonstrates how one sync telegram activates all LEDs
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -31,23 +31,24 @@ Finally we issue a SYNC by broadcasting the SYNC telegram. This makes
 all (channels) of all nodes that are configured for SYNC to activate their
 PWM settings.
 
-Instead of sending a SYNC telegram, there is also the option to use the
-SYNC pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC
-and on the OSP32 board have jumper J8 connect SAID2.B2 to the ESP32 GPIO9
-(instead of LED L2.1_B). Only SAID2 is wired for hardware sync on OSP32.
+Instead of sending a SYNC telegram, there is also the option to use the SYNC 
+pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC and 
+on the OSP32 board have jumper J8 connect SAID2.B1 to the ESP32 GPIO9 (instead 
+of LED L2.1_B aka IN1.B). Only SAID2 is wired for hardware sync on OSP32.
 For this OTP must be written, so OTP password must be known and installed.
 
 HARDWARE-1
 The demo should run on the OSP32 board.
 Have a cable from the OUT connector to the IN connector. 
-**The jumper S2-B1 should connect to L2.1-B (default)**
+**The jumper S2-B1 should connect to L2.1-B aka IN_B (default)**
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR-1
-The serial monitor shows that SAID-1 channel-0 (L1.0) is set to green, 
-but it does not yet light up on the board. Next, the Serial monitor shows 
-that SAID-2 channel-0 is set to blue, but also this one does not light up.
-When the serial monitor shows "SYNC via telegram" both light up in sync.
+The serial monitor shows that SAID-1 channel-0 (L1.0 aka OUT0) is set to 
+green, but it does not yet light up on the board. Next, the Serial monitor 
+shows that SAID-2 channel-0 (L2.0 aka IN0) is set to blue, but also this one 
+does not light up (yet). When the serial monitor shows "SYNC via telegram" 
+both light up in sync.
 
 OUTPUT-1
 Welcome to aoosp_sync.ino
@@ -58,20 +59,20 @@ SAID-1 channel-0 to green
 SAID-2 channel-0 to blue
 SYNC via telegram
 
-
 HARDWARE-2
 **The jumper S2-B1 should connect to 9/SYNC**
 
 BEHAVIOR-2
-The serial monitor shows that SAID-1 channel-0 (L1.0) is set to green, 
+The serial monitor shows that SAID-1 channel-0 (L1.0 aka OUT0) is set to green, 
 but it does not yet light up on the board. Next, the Serial monitor shows 
 that SAID-2 channel-0 is set to blue, but also this one does not light up.
 When the serial monitor shows "SYNC SAID-2 via pin" SAID-2 lights up blue.
-Note that SAID-1 does not have its SYNC pin connected.
+Note that SAID-1 does not have its SYNC pin connected, so L1.0 (aka OUT0) will
+not light up green.
 
 OUTPUT-2
 Welcome to aoosp_sync.ino
-version: result 0.4.1 spi 0.5.1 osp 0.4.1
+version: result 0.4.5 spi 0.5.8 osp 0.7.0
 spi: init
 osp: init
 SAID-1 channel-0 to green
@@ -118,12 +119,12 @@ void demo_sync() {
 
   // Configure SAID-1 channel-0 to go green
   Serial.printf("SAID-1 channel-0 to green\n");
-  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/); CHECK_RESULT("setpwmchn(1,grn)");
+  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0000/*red*/, 0x3333/*green*/, 0x0000/*blue*/); CHECK_RESULT("setpwmchn(1,grn)");
   delay(2000);
 
   // Configure SAID-2 channel-0 to go blue
   Serial.printf("SAID-2 channel-0 to blue\n");
-  result= aoosp_send_setpwmchn(0x002, 0/*chn*/, 0x0000/*red*/, 0x0000/*green*/, 0x7FFF/*blue*/); CHECK_RESULT("setpwmchn(1,blu)");
+  result= aoosp_send_setpwmchn(0x002, 0/*chn*/, 0x0000/*red*/, 0x0000/*green*/, 0xEEEE/*blue*/); CHECK_RESULT("setpwmchn(1,blu)");
   delay(2000);
 
   // Broadcast sync to activate the PWM settings

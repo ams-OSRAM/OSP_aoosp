@@ -1,6 +1,6 @@
 // aoosp_error.ino - show the effect of error trapping 
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -41,12 +41,12 @@ the IN connector so that both SAIDs are in the chain.
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR
-During DEMO1 and DEMO2 the first RGB (L1.0) of SAID OUT is green.
+During DEMO1 and DEMO2 the first RGB (L1.0 aka OUT0) of SAID OUT is green.
 For DEMO3 it switches of.
 
 OUTPUT
 Welcome to aoosp_error.ino
-version: result 0.4.1 spi 0.5.1 osp 0.4.1
+version: result 0.4.5 spi 0.5.8 osp 0.7.0
 
 spi: init
 osp: init
@@ -101,7 +101,7 @@ void reset_to_green() {
   result= aoosp_exec_resetinit(); CHECK_RESULT("resetinit"); // restart entire chain
   result= aoosp_send_clrerror(0x000); CHECK_RESULT("clrerror"); // SAIDs have the V flag after boot, clear those
   result= aoosp_send_goactive(0x000); CHECK_RESULT("goactive"); // Switch all nodes (broadcast) to active (allowing to switch on LEDs).
-  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/); CHECK_RESULT("setpwmchn"); // Set channel 0 of first SAID to green
+  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0000/*red*/, 0x3333/*green*/, 0x0000/*blue*/); CHECK_RESULT("setpwmchn"); // Set channel 0 of first SAID to green
 }
 
 

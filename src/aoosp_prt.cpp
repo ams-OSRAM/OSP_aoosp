@@ -1,6 +1,6 @@
 // aoosp_prt.cpp - helpers to pretty print OSP telegrams in human readable form
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -33,7 +33,7 @@ static const char * aoosp_prt_stat_flags04[]      = { "clou", "cloU", "clOu", "c
                                                       "Clou", "CloU", "ClOu", "ClOU", "CLou", "CLoU", "CLOu", "CLOU",};
 static const char * aoosp_prt_setup_flags48[]     = { "pcct", "pccT", "pcCt", "pcCT",  "pcct", "pCcT", "pCCt", "pCCT", // PWM fast, mcu spi CLK inverted, CRC check enabled, Temp sensor slow rate
                                                       "Pcct", "PccT", "PcCt", "pcCT",  "Pcct", "PCcT", "PCCt", "PCCT",};
-static const char * aoosp_prt_com_names[]         = { "lvds", "eol","mcu", "can" };
+static const char * aoosp_prt_com_names[]         = { "lvds",  "eol", "mcu", "can" };
 static const char * aoosp_prt_curchn_flags[]      = { "rshd", "rshD", "rsHd", "rsHD", "rShd", "rShD", "rSHd", "rSHD", // Reserved, Sync enabled, Hybrid PWM, Dithering enabled
                                                       "Rshd", "RshD", "RsHd", "RsHD", "RShd", "RShD", "RSHd", "RSHD",};
 static const char * aoosp_prt_i2ccfg_flags[]      = { "itnb", "itnB", "itNb", "itNB", "iTnb", "iTnB", "iTNb", "iTNB", // Interrupt, Twelve bit addressing, Nack/ack, I2C transaction Busy
@@ -64,6 +64,7 @@ static char aoosp_prt_buf[AOOSP_PRT_BUF_SIZE];
     @note   For SAID use aoosp_prt_temp_said.
             Value typically comes from READTEMP, READTEMPSTAT or INITxxxx.
     @note   Temperature [°C]= 1.08 x ADC readout value – 126°C
+    @note   See aoosp_send_readtempstat() or aoosp_send_readtemp().
 */
 int aoosp_prt_temp_rgbi(uint8_t temp) {
   // scale up with factor 100 for more accurate division in integer domain
@@ -79,12 +80,55 @@ int aoosp_prt_temp_rgbi(uint8_t temp) {
     @note   For RGBi use aoosp_prt_temp_rgbi.
             Value typically comes from READTEMP, READTEMPSTAT or INITxxxx.
     @note   T(C) = (TEMPVALUE - 116) / 0.85 + 25
+    @note   See aoosp_send_readtempstat() or aoosp_send_readtemp().
 */
 int aoosp_prt_temp_said(uint8_t temp) {
   // scale up with factor 100 for more accurate division in integer domain
   int temp100= ((int)(temp)-116)*100; 
   int round= temp100<0 ? -42 : +42; // 42 ~ 85/2
   return (temp100+round)/85+25;
+}
+
+
+/*!
+    @brief  Converts SAID raw ADC measurement result into a voltage.
+    @param  adcdat
+            ADC result byte reported by READADCDAT
+    @return The voltage associated to adcdat (in mV).
+    @note   V = ADC_GAIN * (ADCDAT-2)
+            Datasheet: ADC_GAIN=3.494 mV/LSB
+    @note   Voltage drops over ~3.5V are out of range.
+    @note   See aoosp_send_setadc().
+*/
+int aoosp_prt_adc(uint16_t adcdat) {
+  if( adcdat<2 ) return 0;
+  #define ADCGAIN    3494 // uV/LSB
+  // adcdat is 16 bit, fits in 32 bits int, even after multiplying with ADCGAIN
+  int Vf= (((int)adcdat)-2)*ADCGAIN; // in uV
+  // 0 <= Vf <= (1023-2)*3494=3567374=3.567V
+  return (Vf+500)/1000; // round to mV
+}
+
+
+/*!
+    @brief  Converts an ADC mux input to a pin name of a SAID  (like "B2").
+    @param  adcmux
+            An enumeration of ADC mux channels (see AOOSP_ADC_FLAGS_MUX_DRVxx)
+    @return String describing the mux input: R#, B# or G# where # is 0, 1, or 2.
+    @note   SAID version A has a different mapping, this is for version B and up.
+    @note   See aoosp_send_setadc().
+    @note   This is the "inverse" of AOOSP_ADC_FLAGS_MUX_DRVxx
+    @note   Only use one char* returning pretty print function at a time.
+*/
+const char * aoosp_prt_adcmux(int adcmux) {
+  if( adcmux<0 or adcmux>9 ) return "????";
+  if( adcmux==0 ) return "AUTO";
+  // 1=R0 2=R1 3=R2 4=B0 5=B1 6=B2 7=G0 8=G1 9=G2
+  int col= (adcmux-1)/3;  // 0=RED 1=BLU 2=GRN
+  int chn= (adcmux-1)%3;
+  char cols[]={'R','B','G'}; // ADC mux has irregular order
+  snprintf( aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%c%d", cols[col],chn );
+  return aoosp_prt_buf;
 }
 
 
@@ -98,7 +142,7 @@ int aoosp_prt_temp_said(uint8_t temp) {
     @note   Value typically comes from READSTAT, READTEMPSTAT or INITxxxx.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_stat_state(uint8_t stat) {
+const char * aoosp_prt_stat_state(uint8_t stat) {
   snprintf( aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s", aoosp_prt_stat_names[BITS_SLICE(stat,6,8)] );
   return aoosp_prt_buf;
 }
@@ -117,7 +161,7 @@ char * aoosp_prt_stat_state(uint8_t stat) {
             Value typically comes from READSTAT, READTEMPSTAT or INITxxxx.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_stat_rgbi(uint8_t stat) {
+const char * aoosp_prt_stat_rgbi(uint8_t stat) {
   snprintf( aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_stat_names[BITS_SLICE(stat,6,8)], aoosp_prt_stat_flags46_rgbi[BITS_SLICE(stat,4,6)], aoosp_prt_stat_flags04[BITS_SLICE(stat,0,4)] );
   return aoosp_prt_buf;
@@ -137,7 +181,7 @@ char * aoosp_prt_stat_rgbi(uint8_t stat) {
             Value typically comes from READSTAT, READTEMPSTAT or INITxxxx.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_stat_said(uint8_t stat) {
+const char * aoosp_prt_stat_said(uint8_t stat) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_stat_names[BITS_SLICE(stat,6,8)], aoosp_prt_stat_flags46_said[BITS_SLICE(stat,4,6)], aoosp_prt_stat_flags04[BITS_SLICE(stat,0,4)] );
   return aoosp_prt_buf;
@@ -155,7 +199,7 @@ char * aoosp_prt_stat_said(uint8_t stat) {
     @note   Value typically comes from READLEDST or READLEDSTCHN.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_ledst(uint8_t ledst) {
+const char * aoosp_prt_ledst(uint8_t ledst) {
   //  7  6  5  4   3  2  1  0
   // RVS RO GO BO RVS RS GS BS (red, green blue x open short)
   #define oO(pos) ((ledst & (1<<(pos))) ? 'O' : 'o' )
@@ -187,7 +231,7 @@ char * aoosp_prt_ledst(uint8_t ledst) {
             Value typically comes from READPWM or READPWMCHN.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t daytimes) {
+const char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t daytimes) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%X.%04X-%X.%04X-%X.%04X",
     BITS_SLICE(daytimes,2,3), red, BITS_SLICE(daytimes,1,2), green, BITS_SLICE(daytimes,0,1), blue );
   return aoosp_prt_buf;
@@ -212,7 +256,7 @@ char * aoosp_prt_pwm_rgbi(uint16_t red, uint16_t green, uint16_t blue, uint8_t d
             Value typically comes from READPWM or READPWMCHN.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_pwm_said(uint16_t red, uint16_t green, uint16_t blue) {
+const char * aoosp_prt_pwm_said(uint16_t red, uint16_t green, uint16_t blue) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%04X-%04X-%04X", red, green, blue );
   return aoosp_prt_buf;
 }
@@ -227,7 +271,7 @@ char * aoosp_prt_pwm_said(uint16_t red, uint16_t green, uint16_t blue) {
     @note   Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_com_sio1(uint8_t com) {
+const char * aoosp_prt_com_sio1(uint8_t com) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s", aoosp_prt_com_names[BITS_SLICE(com,0,2)] );
   return aoosp_prt_buf;
 }
@@ -242,7 +286,7 @@ char * aoosp_prt_com_sio1(uint8_t com) {
     @note   Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_com_sio2(uint8_t com) {
+const char * aoosp_prt_com_sio2(uint8_t com) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s", aoosp_prt_com_names[BITS_SLICE(com,2,4)] );
   return aoosp_prt_buf;
 }
@@ -260,7 +304,7 @@ char * aoosp_prt_com_sio2(uint8_t com) {
             Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_com_rgbi(uint8_t com) {
+const char * aoosp_prt_com_rgbi(uint8_t com) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s",
     aoosp_prt_com_names[BITS_SLICE(com,2,4)], aoosp_prt_com_names[BITS_SLICE(com,0,2)]  );
   return aoosp_prt_buf;
@@ -280,7 +324,7 @@ char * aoosp_prt_com_rgbi(uint8_t com) {
             Value typically comes from READCOMST.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_com_said(uint8_t com) {
+const char * aoosp_prt_com_said(uint8_t com) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s-%s",
     aoosp_prt_com_names[BITS_SLICE(com,2,4)], BITS_SLICE(com,4,5)?"loop":"bidir", aoosp_prt_com_names[BITS_SLICE(com,0,2)]  );
   return aoosp_prt_buf;
@@ -298,7 +342,7 @@ char * aoosp_prt_com_said(uint8_t com) {
     @note   Value typically comes from READSETUP.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_setup(uint8_t flags) {
+const char * aoosp_prt_setup(uint8_t flags) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s-%s",
     aoosp_prt_setup_flags48[BITS_SLICE(flags,4,8)], aoosp_prt_stat_flags04[BITS_SLICE(flags,0,4)]  );
   return aoosp_prt_buf;
@@ -317,7 +361,7 @@ char * aoosp_prt_setup(uint8_t flags) {
             (up to 12 guaranteed to fit).
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_bytes(const void * buf, int size ) {
+const char * aoosp_prt_bytes(const void * buf, int size ) {
   char * p = aoosp_prt_buf;
   int remain = AOOSP_PRT_BUF_SIZE;
   for( int i=0; i<size && 3*i<AOOSP_PRT_BUF_SIZE-1; i++ ) {
@@ -326,6 +370,7 @@ char * aoosp_prt_bytes(const void * buf, int size ) {
     remain-=num;
   }
   if( size>0 ) *(p-1)='\0'; // overwrite last space
+  else *p='\0'; // nothing was added to aoosp_prt_buf, add terminator
   return aoosp_prt_buf;
 }
 
@@ -340,7 +385,7 @@ char * aoosp_prt_bytes(const void * buf, int size ) {
     @note   Value typically comes from READCUCHN.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_curchn(uint8_t flags) {
+const char * aoosp_prt_curchn(uint8_t flags) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s", aoosp_prt_curchn_flags[flags] );
   return aoosp_prt_buf;
 }
@@ -356,7 +401,7 @@ char * aoosp_prt_curchn(uint8_t flags) {
     @note   Value typically comes from READI2CCFG.
     @note   Only use one char* returning pretty print function at a time.
 */
-char * aoosp_prt_i2ccfg(uint8_t flags) {
+const char * aoosp_prt_i2ccfg(uint8_t flags) {
   snprintf(aoosp_prt_buf, AOOSP_PRT_BUF_SIZE, "%s", aoosp_prt_i2ccfg_flags[flags] );
   return aoosp_prt_buf;
 }

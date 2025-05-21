@@ -1,6 +1,6 @@
 // aoosp_i2c.ino - demo how use the I2C master in a SAID
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -25,8 +25,9 @@
 /*
 DESCRIPTION
 This demo first performs an I2C scan using the I2C bridge in a SAID.
-Then it issues I2C read and write transactions to an EEPROM memory,
-assumed to have I2C device address 0x50 connected to the first SAID.
+Then it issues I2C read and write transactions to an EEPROM memory.
+The EEPROM is assumed to have I2C device address 0x50 and to be 
+connected to the first SAID.
 Finally it polls the INT line and shows its status on SAID1.RGB0.
 
 HARDWARE
@@ -44,12 +45,12 @@ In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR
 During the I2C scan or the EEPROM test, there is no visible behavior.
-During the third phase the first RGB (L1.0) of SAID OUT is green
+During the third phase the first RGB (L1.0 aka OUT0) of SAID OUT is green
 except while the INT button is depressed, then it is red.
 
 OUTPUT
 Welcome to aoosp_i2c.ino
-version: result 0.4.1 spi 0.5.1 osp 0.4.1
+version: result 0.4.5 spi 0.5.8 osp 0.7.0
 spi: init
 osp: init
 
@@ -83,7 +84,7 @@ eeprom FF FF FF FF FF FF FF FF (restored)
 
 resetinit last 002 loop
 
-Press INT button and check L1.0
+Press INT button and check L1.0 aka OUT0
 */
 
 
@@ -237,7 +238,7 @@ void i2c_int_setup() {
   if( result!=aoresult_ok ) { Serial.printf("goactive %s\n", aoresult_to_str(result) ); return; }
 
   // Instruct user
-  Serial.printf("\nPress INT button and check L1.0\n");
+  Serial.printf("\nPress INT button and check L1.0 aka OUT0\n");
 }
 
 
@@ -249,10 +250,10 @@ void i2c_int_loop() {
   if( result!=aoresult_ok ) { Serial.printf("readi2ccfg %s\n", aoresult_to_str(result) ); return; }
   uint8_t intstate= flags & AOOSP_I2CCFG_FLAGS_INT;
   if( intstate ) {
-    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x7FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
+    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x3333/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
     if( result!=aoresult_ok ) { Serial.printf("setpwmchn %s\n", aoresult_to_str(result) ); return; }
   } else {
-    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x0000/*red*/, 0x7FFF/*green*/, 0x0000/*blue*/);
+    result= aoosp_send_setpwmchn(ADDR_LED, 0/*chn*/, 0x0000/*red*/, 0x3333/*green*/, 0x0000/*blue*/);
     if( result!=aoresult_ok ) { Serial.printf("setpwmchn %s\n", aoresult_to_str(result) ); return; }
   }
 

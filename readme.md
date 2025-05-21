@@ -46,7 +46,7 @@ File > Examples > OSP Telegrams aoosp > ...
 - **aoosp_cur** ([source](examples/aoosp_cur))  
   This demo configures channel 1 of node 001 to use a high drive current,
   and it configures channel 1 of node 002 to use a low drive current.
-  Next it broadcasts `setpwm` with max brightness (7FFF 7FFF 7FFF). This
+  Next it broadcasts `setpwm` with max brightness (FFFF FFFF FFFF). This
   results in the two white lights with different brightness.
 
 - **aoosp_error** ([source](examples/aoosp_error))  
@@ -63,8 +63,9 @@ File > Examples > OSP Telegrams aoosp > ...
 
 - **aoosp_i2c** ([source](examples/aoosp_i2c))  
   This demo first performs an I2C scan using the I2C bridge in a SAID.
-  Then it issues I2C read and write transactions to an EEPROM memory,
-  assumed to have I2C device address 0x50 connected to the first SAID.
+  Then it issues I2C read and write transactions to an EEPROM memory.
+  The EEPROM is assumed to have I2C device address 0x50 and to be 
+  connected to the first SAID.
   Finally it polls the INT line and shows its status on SAID1.RGB0.
 
 - **aoosp_sync** ([source](examples/aoosp_sync))  
@@ -82,6 +83,16 @@ File > Examples > OSP Telegrams aoosp > ...
 - **aoosp_ledst** ([source](examples/aoosp_ledst))  
   This demo shows the behavior of LOS (LED Open Short) status which is 
   obtained via the telegram `readledst[chn]`. 
+  
+- **aoosp_adcled** ([source](examples/aoosp_adcled.ino))  
+  This sketch uses the ADC inside the SAID to measure the forward voltage
+  of the LEDs connected to it.
+
+- **aoosp_adcpot** ([source](examples/aoosp_adcpot.ino))  
+  This sketch configures a SAID pin as ADC input (instead of driving an LED).
+  Attached to this pad is a potentiometer to vary the voltage. The measured
+  voltage is printed on Serial and mapped to a color (red to blue) of an
+  RGB LED.
 
 - **aoosp_time** ([source](examples/aoosp_time))  
   This demo sends a series of telegrams. The series originally comes from 
@@ -235,6 +246,21 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2025 May 21, 0.8.0**
+  - Added examples `aoosp_adcled.ino` and `aoosp_adcpot.ino`.
+  - Added `aoosp_send_setadc()`, `aoosp_send_readadc()` and `aoosp_send_readadcdat()`.
+  - Added ADC conversion `aoosp_prt_adc()` and `aoosp_prt_adcmux()`.
+  - All `char * aoosp_prt_xxx()` are now `const char * aoosp_prt_xxx()`.
+  - Fixed bug: `aoosp_prt_bytes()` printed old content when `size` was 0.
+  - Fixed warning in `aoosp_otpburn.ino`.
+  - Fixed: example `aoosp_cur.ino` mixed up `AOOSP_CURCHN_FLAGS_DEFAULT` and `AOOSP_CURCHN_CUR_DEFAULT`.
+  - Improved API doc.
+  - Changed examples to use max PWM.
+  - Documentation (of examples) extended with new RGB names on OSP32 V11 ("L2.1 aka IN1").
+  - Improved explanation of `aoosp_sync`.
+  - Added link towards training slides in `aoosp_otpburn.ino`.
+
+  
 - **2025 March 3, 0.7.0**
   - WARNING: AI constants AOOSP_I2CCFG_SPEED_XXX have been renamed to match new formula.
   - I2C speeds now conform datasheet (formula in `aoosp_prt_i2ccfg_speed()`, `aoosp_send.h`, introduced, `AOOSP_I2CCFG_SPEED_MIN` and `AOOSP_I2CCFG_SPEED_MAX`).

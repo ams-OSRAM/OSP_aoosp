@@ -1,6 +1,6 @@
 // aoosp_otpburn.ino - demo how to burn the OTP of a SAID
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -28,16 +28,22 @@ DESCRIPTION
 This demo burns a bit in the OTP (one time programmable memory) of a SAID.
 The demo aoosp_otp.ino only writes in the non-persistent OTP mirror, this
 demo actually updates the OTP persistently.
+There is a training slide deck on OTP burning in the aotop library:
+https://github.com/ams-OSRAM/OSP_aotop/blob/main/extras/manuals/ArduinoOSP-Training-Appendix3-otpburn.pdf
+
 [warning 1] For OTP burning, the SAID password is needed, or a message is issued
   WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
+
 [warning 2] The OTP is a persistent memory. By default all bits are 0; the
 transition to 1 can only be made once for every bit. In other words, OTP 
 writes can not be undone (it is in the name: One Time Programmable memory). 
 Some writes can change the behavior of the SAID (eg writes to CH_CLUSTERING 
 at bits 0D.7, 0D.6 and OD.5), and writes to addresses below 0D could make 
 the SAID unusable.
+
 [warning 3] OTP burning is done with a lower voltage: a lab power supply is 
 needed for the experiment in this sketch.
+
 
 HARDWARE
 This demo runs on the OSP32 board. Connect a SAIDlooker board in BiDir mode
@@ -161,7 +167,7 @@ void otp_burn() {
   // Reset all nodes (broadcast) in the chain (all "off"; they also lose their address).
   result= aoosp_exec_resetinit(&last,&loop); CHECKRESULT("aoosp_exec_resetinit");
   // Invalidate the OTP mirror at the write location
-  result= aoosp_exec_setotp(ADDR, OTPADDR, ~OTPDATA,0x00); CHECKRESULT("aoosp_exec_setotp");
+  result= aoosp_exec_setotp(ADDR, OTPADDR, (uint8_t)~OTPDATA,0x00); CHECKRESULT("aoosp_exec_setotp");
   // OTP hexdump for human checking
   Serial.printf("inv ");
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_HEX ); CHECKRESULT("aoosp_exec_setotp");

@@ -1,6 +1,6 @@
 // aoosp_min.ino - minimal series of OSP telegrams that light up an LED
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -35,40 +35,40 @@ This demo will run alternately in BiDir and Loop mode.
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR
-The first RGB (L1.0) of SAID OUT blinks bright white and dim white.
+The first RGB (L1.0 aka OUT0) of SAID OUT blinks bright white and dim white.
 First in BiDir mode (so direction mux led is green) then in loop (led is orange).
 Then repeats.
 
 OUTPUT
 Welcome to aoosp_min.ino
-version: result 0.1.10 spi 0.2.8 osp 0.2.2
+version: result 0.4.5 spi 0.5.8 osp 0.7.0
 spi: init
 osp: init
 
 reset(0x000) [tele A0 00 00 22]
 reset ok
-initbidir(0x001) [tele A0 04 02 A9] -> [resp A0 09 02 00 50 6D] last=0x02=2 temp=0x00=-86 stat=0x50=SLEEP:tV:clou (-126, SLEEP:oL:clou)
+initbidir(0x001) [tele A0 04 02 A9] -> [resp A0 09 02 00 50 6D] last=0x002=2 temp=0x00=-111 stat=0x50=sleep-tV-clou (-126, sleep-oL-clou)
 initbidir ok last 002
 clrerror(0x000) [tele A0 00 01 0D]
 clrerror ok
 goactive(0x000) [tele A0 00 05 B1]
 goactive ok
-setpwmchn(0x001,0,0x7FFF,0x7FFF,0x7FFF) [tele A0 07 CF 00 FF 7F FF 7F FF 7F FF 74]
+setpwmchn(0x001,0,0x3333,0x3333,0x3333) [tele A0 07 CF 00 FF 33 33 33 33 33 33 FE]
 setpwmchn ok
-setpwmchn(0x001,0,0x0FFF,0x0FFF,0x0FFF) [tele A0 07 CF 00 FF 0F FF 0F FF 0F FF 85]
+setpwmchn(0x001,0,0x0333,0x0333,0x0333) [tele A0 07 CF 00 FF 03 33 03 33 03 33 51]
 setpwmchn ok
 
 reset(0x000) [tele A0 00 00 22]
 reset ok
-initloop(0x001) [tele A0 04 03 86] -> [resp A0 09 03 00 50 63] last=0x02=2 temp=0x00=-86 stat=0x50=SLEEP:tV:clou (-126, SLEEP:oL:clou)
+initloop(0x001) [tele A0 04 03 86] -> [resp A0 09 03 00 50 63] last=0x002=2 temp=0x00=-111 stat=0x50=sleep-tV-clou (-126, sleep-oL-clou)
 initloop ok last 002
 clrerror(0x000) [tele A0 00 01 0D]
 clrerror ok
 goactive(0x000) [tele A0 00 05 B1]
 goactive ok
-setpwmchn(0x001,0,0x7FFF,0x7FFF,0x7FFF) [tele A0 07 CF 00 FF 7F FF 7F FF 7F FF 74]
+setpwmchn(0x001,0,0x3333,0x3333,0x3333) [tele A0 07 CF 00 FF 33 33 33 33 33 33 FE]
 setpwmchn ok
-setpwmchn(0x001,0,0x0FFF,0x0FFF,0x0FFF) [tele A0 07 CF 00 FF 0F FF 0F FF 0F FF 85]
+setpwmchn(0x001,0,0x0333,0x0333,0x0333) [tele A0 07 CF 00 FF 03 33 03 33 03 33 51]
 setpwmchn ok
 */
 
@@ -106,16 +106,23 @@ void send_min(int loop) {
   result= aoosp_send_goactive(0x000);
   Serial.printf("goactive %s\n", aoresult_to_str(result) );
 
-  // Set three PWM values of channel 0 of node 0x001 (unicast) to max (node 1 must be a SAID, otherwise use aoosp_send_setpwm)
-  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x7FFF/*red*/, 0x7FFF/*green*/, 0x7FFF/*blue*/);
+  // Set three PWM values of channel 0 of node 0x001 (unicast) to a high value (node 1 must be a SAID, otherwise use aoosp_send_setpwm)
+  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x3333/*red*/, 0x3333/*green*/, 0x3333/*blue*/);
   Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
 
   delay(500);
 
-  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0FFF/*red*/, 0x0FFF/*green*/, 0x0FFF/*blue*/);
+  // Set three PWM values of channel 0 of node 0x001 (unicast) to a low value (node 1 must be a SAID, otherwise use aoosp_send_setpwm)
+  result= aoosp_send_setpwmchn(0x001, 0/*chn*/, 0x0333/*red*/, 0x0333/*green*/, 0x0333/*blue*/);
   Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
 
   delay(500);
+  
+  // SAID has 16 bit PWM registers; the top 15 bits are for the duty cycle, 
+  // the lowest bit selects "LSB dithering", approaching a 16 bit range.
+  
+  // Assumption: SETUP.FAST_PWM is 0, the default, selecting 500Hz PWM 
+  // with 15 bits enabled.
 }
 
 
@@ -132,8 +139,8 @@ void setup() {
 
 
 void loop() {
-  send_min(0);
+  send_min(0); // restart complete demo
   Serial.printf("\n");
-  send_min(1);
+  send_min(1); // restart complete demo
   Serial.printf("\n");
 }

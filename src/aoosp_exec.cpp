@@ -1,6 +1,6 @@
 // aoosp_exec.cpp - execute high level OSP routines (several telegrams)
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -270,7 +270,7 @@ free_resources:
     @note   It might be more convenient to use aoosp_exec_i2cpower() 
             instead of this function. That one also checks that 
             I2C_BRIDGE_EN is set, and if so, powers the I2C bus, which 
-            is needed anyhow for i2C operations.
+            is needed anyhow for I2C operations.
     @note   Wrapper around aoosp_send_readotp for easy access.
 */
 aoresult_t aoosp_exec_i2cenable_get(uint16_t addr, int * enable) {
@@ -317,42 +317,6 @@ aoresult_t aoosp_exec_i2cenable_set(uint16_t addr, int enable) {
   uint8_t ormask =  enable ? otp_bit : 0x00    ;
   // Set
   return aoosp_exec_setotp(addr,otp_addr,ormask,andmask);
-}
-
-
-/*!
-    @brief  Checks the addressed SAID if its OTP has the I2C bridge feature
-            enabled, if so, powers the I2C bus.
-    @param  addr
-            The address to send the telegram to (unicast).
-    @return aoresult_ok              if all ok
-            aoresult_sys_id          when not a SAID
-            aoresult_dev_noi2cbridge when SAID has no I2C bridge (bit in OTP)
-            other                    telegram error
-    @note   Sets highest power for I2C bus (channel 2).
-            This is safe, but could be lowered to minimize power consumption,
-            depending on RC constant given by pull-up and line capacitance.
-*/
-aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
-  int        enable;
-  aoresult_t result;
-  uint32_t   id;
-  
-  // Check (via IDENTITY) if node addr is a SAID
-  result = aoosp_send_identify(addr, &id );
-  if( result!=aoresult_ok ) return result;
-  if( ! AOOSP_IDENTIFY_IS_SAID(id) ) return aoresult_sys_id;
-
-  // Check (via OTP) if I2C bridging is enabled
-  result = aoosp_exec_i2cenable_get(addr,&enable);
-  if( result!=aoresult_ok ) return result;
-  if( !enable ) return aoresult_dev_noi2cbridge;
-  
-  // Power the bus
-  result = aoosp_send_setcurchn(addr, /*chan*/2, /*flags*/0, 4, 4, 4);
-  
-  // Return result
-  return result;
 }
 
 
@@ -406,6 +370,42 @@ aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable) {
   uint8_t ormask =  enable ? otp_bit : 0x00    ;
   // Set
   return aoosp_exec_setotp(addr,otp_addr,ormask,andmask);
+}
+
+
+/*!
+    @brief  Checks the addressed SAID if its OTP has the I2C bridge feature
+            enabled, if so, powers the I2C bus.
+    @param  addr
+            The address to send the telegram to (unicast).
+    @return aoresult_ok              if all ok
+            aoresult_sys_id          when not a SAID
+            aoresult_dev_noi2cbridge when SAID has no I2C bridge (bit in OTP)
+            other                    telegram error
+    @note   Sets highest power for I2C bus (channel 2).
+            This is safe, but could be lowered to minimize power consumption,
+            depending on RC constant given by pull-up and line capacitance.
+*/
+aoresult_t aoosp_exec_i2cpower(uint16_t addr) {
+  int        enable;
+  aoresult_t result;
+  uint32_t   id;
+  
+  // Check (via IDENTITY) if node addr is a SAID
+  result = aoosp_send_identify(addr, &id );
+  if( result!=aoresult_ok ) return result;
+  if( ! AOOSP_IDENTIFY_IS_SAID(id) ) return aoresult_sys_id;
+
+  // Check (via OTP) if I2C bridging is enabled
+  result = aoosp_exec_i2cenable_get(addr,&enable);
+  if( result!=aoresult_ok ) return result;
+  if( !enable ) return aoresult_dev_noi2cbridge;
+  
+  // Power the bus
+  result = aoosp_send_setcurchn(addr, /*chan*/2, /*flags*/0, 4, 4, 4);
+  
+  // Return result
+  return result;
 }
 
 
