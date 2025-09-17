@@ -1,6 +1,6 @@
 // aoosp_cluster.ino - illustrates how to use driver cluster 
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -310,7 +310,7 @@ void set_cluster(int newcluster) {
 
   // Print old cluster configuration
   result= aoosp_send_readotp(ADDR, OTPADDR_CH_CLUSTERING, &val, 1); cluster = val >> 5;
-  if( result!=aoresult_ok ) Serial.printf("aoosp_send_readotp %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("readotp %s\n", aoresult_to_str(result) );
   Serial.printf("From OTP[%02X]=%02X: cluster=%d\n",OTPADDR_CH_CLUSTERING, val, cluster);
 
   // Check test password
@@ -318,11 +318,11 @@ void set_cluster(int newcluster) {
 
   // Write new cluster to OTP (mirror)
   result= aoosp_exec_setotp(ADDR, OTPADDR_CH_CLUSTERING, OTPMASK_CLUSTER(newcluster), OTPMASK_CH_CLUSTERING); 
-  if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("setotp %s\n", aoresult_to_str(result) );
 
   // Print old cluster configuration
   result= aoosp_send_readotp(ADDR, OTPADDR_CH_CLUSTERING, &val, 1); cluster = val >> 5;
-  if( result!=aoresult_ok ) Serial.printf("aoosp_send_readotp %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("readotp %s\n", aoresult_to_str(result) );
   Serial.printf("To   OTP[%02X]=%02X: cluster=%d\n",OTPADDR_CH_CLUSTERING, val, cluster);
 }
 
@@ -331,13 +331,13 @@ void cluster_demo() {
   aoresult_t result;
   uint32_t   id;
 
-  // Reset and initialize all nodes and
+  // Reset and initialize all nodes
   result= aoosp_exec_resetinit(); 
-  if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("resetinit %s\n", aoresult_to_str(result) );
 
   // Check node ADDR is a SAID
   result= aoosp_send_identify(ADDR, &id);
-  if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("identify %s\n", aoresult_to_str(result) );
   if( ! AOOSP_IDENTIFY_IS_SAID(id) ) Serial.printf("ERROR: targeting node %03X, but this is not a SAID\n", ADDR );
 
   // Configure cluster 
@@ -346,11 +346,11 @@ void cluster_demo() {
 
   // Clear the error flags of all nodes; SAIDs have the V flag (over-voltage) after reset, preventing them from going active.
   result= aoosp_send_clrerror(0x000); 
-  if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("clrerror %s\n", aoresult_to_str(result) );
 
   // Switch the state of all nodes to active (allowing to switch on LEDs).
   result= aoosp_send_goactive(0x000); 
-  if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
+  if( result!=aoresult_ok ) Serial.printf("goactive %s\n", aoresult_to_str(result) );
 
   // Run all 9 cases of switching one driver on
   Serial.printf("\n");

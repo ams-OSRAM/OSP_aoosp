@@ -29,7 +29,8 @@
 // === LOG ================================================
 
 
-// When set to 0, the aoosp library has logging enabled for telegram send and receive
+// When set to 0, the aoosp library has logging code compiled out, and the API
+// functions are stubbed to empty. When 1, aoosp_loglevel_set() controls detail
 #define AOOSP_LOG_ENABLED 1
 
 
@@ -55,10 +56,11 @@
 #define AOOSP_ADDR_GLOBALMIN             ( 0x000 )
 #define AOOSP_ADDR_GLOBALMAX             ( 0x3FE )
 
-#define AOOSP_ADDR_BROADCAST             ( 0x000 )
-
 #define AOOSP_ADDR_UNICASTMIN            ( 0x001 )
 #define AOOSP_ADDR_UNICASTMAX            ( 0x3EF )
+
+#define AOOSP_ADDR_BROADCAST             ( 0x000 )
+#define AOOSP_ADDR_UNINIT                ( 0x3FF )
 
 #define AOOSP_ADDR_GROUP0                ( 0x3F0 )
 #define AOOSP_ADDR_GROUP1                ( 0x3F1 )
@@ -76,8 +78,6 @@
 #define AOOSP_ADDR_GROUP13               ( 0x3FD )
 #define AOOSP_ADDR_GROUP14               ( 0x3FE )
 #define AOOSP_ADDR_GROUP(n)              ( (n)<0 || (n)>14 ? AOOSP_ADDR_UNINIT : AOOSP_ADDR_GROUP0+(n) ) // map illegal group n to illegal address
-
-#define AOOSP_ADDR_UNINIT                ( 0x3FF )
 
 #define AOOSP_ADDR_ISBROADCAST(addr)     ( (addr)==AOOSP_ADDR_BROADCAST )
 #define AOOSP_ADDR_ISUNICAST(addr)       ( AOOSP_ADDR_UNICASTMIN<=(addr) && (addr)<=AOOSP_ADDR_UNICASTMAX )
@@ -216,10 +216,12 @@ aoresult_t aoosp_send_gload(uint16_t addr);
 
 // Telegram 18 I2CREAD - requests a SAID to master a read on its I2C bus.
 aoresult_t aoosp_send_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t count );
+aoresult_t aoosp_send_i2cread12(uint16_t addr, uint8_t daddr7, uint16_t raddr, uint8_t count );
 
 
 // Telegram 19 I2CWRITE - requests a SAID to master a write on its I2C bus.
 aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t * buf, int count);
+aoresult_t aoosp_send_i2cwrite12(uint16_t addr, uint8_t daddr7, uint16_t raddr, const uint8_t * buf, int count);
 
 
 // Telegram 1A -- free
@@ -503,11 +505,11 @@ aoresult_t aoosp_send_readcurchn(uint16_t addr, uint8_t chn, uint8_t *flags, uin
 aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8_t rcur, uint8_t gcur, uint8_t bcur);
 
 
-// Telegram 52 READTCOEFF - asks the addressed node to respond with the temperature coefficients of the requested channel.
+// Telegram 52 READTCOEFFCHN - asks the addressed node to respond with the temperature coefficients of the requested channel.
 /* Not yet implemented */
 
 
-// Telegram 53 SETTCOEFF - sets RGB temperature coefficients (and a reference) of a specified channel.
+// Telegram 53 SETTCOEFFCHN - sets RGB temperature coefficients (and a reference) of a specified channel.
 /* Not yet implemented */
 
 
@@ -602,7 +604,7 @@ aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t * adcdat);
 aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 
 
-// Telegram 60 -- READSTAT with SR
+// Telegram 60 READSTAT with SR
 /* Not yet implemented */
 
 
@@ -610,7 +612,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 62 -- READTEMPST with SR
+// Telegram 62 READTEMPST with SR
 /* Not yet implemented */
 
 
@@ -618,7 +620,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 64 -- READCOMST with SR
+// Telegram 64 READCOMST with SR
 /* Not yet implemented */
 
 
@@ -626,7 +628,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 66 -- READLEDST  with SR
+// Telegram 66 READLEDST  with SR
 /* Not yet implemented */
 
 
@@ -634,7 +636,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 68 -- READTEMP with SR
+// Telegram 68 READTEMP with SR
 /* Not yet implemented */
 
 
@@ -674,11 +676,11 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Not yet implemented */
 
 
-// Telegram 72 -- no READTCOEFF with SR
+// Telegram 72 -- no READTCOEFFCHN with SR
 /* Reserved telegram ID */
 
 
-// Telegram 73 SETTCOEFF with SR
+// Telegram 73 SETTCOEFFCHN with SR
 /* Not yet implemented */
 
 

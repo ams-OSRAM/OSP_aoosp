@@ -62,9 +62,10 @@ Measured (10x) at 24mA and 100% PWM
 
 
 // Address of the SAID whose Vf we measure
-#define TARGET_ADDR    0x001  // SAID OUT on OSP32 (ALERT: make sure to select a SAID version B, not A)
+#define TARGET_ADDR    0x001  // SAID OUT on OSP32 (ALERT: make sure to select a SAID version v1.1, not v1.0)
 #define COUNT          10     // Averaging ADC over COUNT samples
 #define PWM            0xFFFF // Highest PWM gives highest accuracy (for ADC measurement)
+// See https://github.com/ams-OSRAM/OSP_aotop/tree/main/extras/manuals/saidversions
 
 
 // Simple error handling

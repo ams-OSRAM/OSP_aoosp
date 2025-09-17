@@ -27,7 +27,7 @@ That library expects a board like the **OSP32** board in the evaluation kit.
 
 This library comes with the following examples.
 You can find them in the Arduino IDE via 
-File > Examples > OSP Telegrams aoosp > ...
+[File > Examples > OSP Telegrams aoosp > ...](examples):
 
 - **aoosp_crc** ([source](examples/aoosp_crc))  
   This demo computes the CRC of a telegram (byte buffer).
@@ -35,7 +35,7 @@ File > Examples > OSP Telegrams aoosp > ...
   Once to check the CRC in an incoming response.
 
 - **aoosp_min** ([source](examples/aoosp_min))  
-  This demo sends a minimal set of OSP telegrams that light up an LED
+  This "blinky" demo sends a minimal set of OSP telegrams that light up an LED
   connected to a SAID channel. Once using BiDir, once using Loop.
   Then repeats.
 
@@ -63,10 +63,18 @@ File > Examples > OSP Telegrams aoosp > ...
 
 - **aoosp_i2c** ([source](examples/aoosp_i2c))  
   This demo first performs an I2C scan using the I2C bridge in a SAID.
-  Then it issues I2C read and write transactions to an EEPROM memory.
+  Then it issues I2C read and write transactions to an 256 byte EEPROM memory.
   The EEPROM is assumed to have I2C device address 0x50 and to be 
   connected to the first SAID.
   Finally it polls the INT line and shows its status on SAID1.RGB0.
+
+- **aoosp_i2c12** ([source](examples/aoosp_i2c12))  
+  This demo shows how to read and write to an I2C devices using 12 bits mode.
+  The demo assumes an empty 8k byte EEPROM (i.e. filled with FFs) is connected 
+  to the I2C port of the OSP32. The demo resets and initializes the OSP chain, 
+  configures the SAID on the OSP32 board for 12 bits mode, then writes five 
+  bytes to location 0x12E of the EEPROM. After that a memory dump is made. 
+  To clean up, the five bytes are reset to 0xFF again.
 
 - **aoosp_sync** ([source](examples/aoosp_sync))  
   This demo shows how to use the SYNC feature; a feature that switches on all 
@@ -246,6 +254,20 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2025 September 17, 0.9.0**
+  - Improved documentation for `aoosp_adcled.ino`, `aoosp_adcpot.ino`, 
+    `aoosp_cluster.ino`, `aoosp_sync.ino`, and `aoosp_otp.ino`.
+  - `aoosp_exec_otpdump()` now dumps fields in table format (when passing `AOOSP_OTPDUMP_CUSTOMER_FIELDS`);
+    old format retained via `AOOSP_OTPDUMP_CUSTOMER_FIELDSLIST`; updated examples and doc.
+  - `aoosp_exec_otpdump()` now includes the EVK fields (at address 0x1F).
+  - Added `aoosp_exec_skipchns_get()` and `aoosp_exec_skipchns_set()`.
+  - Added example `aoosp_i2c12.ino` (12 bits I2C).
+  - Added support for 12 bit I2C: `aoosp_send_i2cread12()`, `aoosp_send_i2cwrite12()`, 
+    and macros `aoosp_exec_i2cread12()`, `aoosp_exec_i2cwrite12()`.
+  - Improved comments in `aoosp_send.cpp/h`.
+  - Added link to examples.
+  
+  
 - **2025 May 21, 0.8.0**
   - Added examples `aoosp_adcled.ino` and `aoosp_adcpot.ino`.
   - Added `aoosp_send_setadc()`, `aoosp_send_readadc()` and `aoosp_send_readadcdat()`.

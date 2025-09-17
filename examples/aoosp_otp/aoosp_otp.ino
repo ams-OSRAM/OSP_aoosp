@@ -1,6 +1,6 @@
 // aoosp_otp.ino - demo how to read and write OTP (mirror)
 /*****************************************************************************
- * Copyright 2024 by ams OSRAM AG                                            *
+ * Copyright 2024,2025 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -43,23 +43,28 @@ Nothing to be seen, example only manipulates OTP memory.
 
 OUTPUT
 Welcome to aoosp_otp.ino
-version: result 0.4.4 spi 0.5.6 osp 0.4.4
-spi: init
+version: result 0.4.6 spi 1.0.0 osp 0.8.0
+spi: init(MCU-B)
 osp: init
 
 DUMP of 001
 resetinit last 002 loop
 
 otp: 0x0D: 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-otp: CH_CLUSTERING     0D.7:5 0
-otp: HAPTIC_DRIVER     0D.4   0
-otp: SPI_MODE          0D.3   1
-otp: SYNC_PIN_EN       0D.2   0
-otp: STAR_NET_EN       0D.1   0
-otp: I2C_BRIDGE_EN     0D.0   1
-otp: *STAR_START       0E.7   0
-otp: OTP_ADDR_EN       0E.3   0
-otp: STAR_NET_OTP_ADDR 0E.2:0 0 (0x000)
+          7             6             5             4             3             2             1             0
+   +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+0D |            CH_CLUSTERING[2:0]           |HAPTIC_DRIVER|  SPI_MODE   | SYNC_PIN_EN | STAR_NET_EN |I2C_BRIDGE_EN|
+   |                    0                    |      0      |      1      |      0      |      0      |      1      |
+   +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+0E |             |             |             |             | OTP_ADDR_EN |         STAR_NET_OTP_ADDR[2:0]          |
+   |      0      |      0      |      0      |      0      |      0      |                  0b000                  |
+   +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+1E |  CUST_LOCK  |BRANCH_POINT*|             |             |             |  SKIPCHN2*  |  SKIPCHN1*  |  SKIPCHN0*  |
+   |      0      |      0      |      0      |      0      |      0      |      0      |      0      |      0      |
+   +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+1F |                                                   CRC2[7:0]                                                   |
+   |                                                      0x00                                                     |
+   +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
 
 READ/WRITE DEMO of 001
 resetinit last 002 loop
@@ -93,8 +98,7 @@ void otp_dump() {
   Serial.printf("resetinit last %03X %s\n", last, loop?"loop":"bidir" );
   Serial.printf("\n");
 
-
-  // Dump, update 10, dump, restore 10, dump
+  // Dump the OTP
   result= aoosp_exec_otpdump(ADDR, AOOSP_OTPDUMP_CUSTOMER_ALL );
   if( result!=aoresult_ok ) { Serial.printf("ERROR otpdump %s\n", aoresult_to_str(result) ); return; }
 }

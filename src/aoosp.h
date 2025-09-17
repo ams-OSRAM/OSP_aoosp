@@ -23,7 +23,7 @@
 
 
 // Identifies lib version
-#define AOOSP_VERSION "0.8.0"
+#define AOOSP_VERSION "0.9.0"
 
 
 // Include the (headers of the) modules of this app

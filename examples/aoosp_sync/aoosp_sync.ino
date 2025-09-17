@@ -32,15 +32,17 @@ all (channels) of all nodes that are configured for SYNC to activate their
 PWM settings.
 
 Instead of sending a SYNC telegram, there is also the option to use the SYNC 
-pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC and 
+pin of the SAID (pin B1). To demonstrate that, define USE_HARDWARE_SYNC to 1 and 
 on the OSP32 board have jumper J8 connect SAID2.B1 to the ESP32 GPIO9 (instead 
 of LED L2.1_B aka IN1.B). Only SAID2 is wired for hardware sync on OSP32.
-For this OTP must be written, so OTP password must be known and installed.
+For this OTP must be written, so OTP password must be known and installed, otherwise
+  WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it
+is issued (see in aoosp.cpp).
 
 HARDWARE-1
 The demo should run on the OSP32 board.
 Have a cable from the OUT connector to the IN connector. 
-**The jumper S2-B1 should connect to L2.1-B aka IN_B (default)**
+**The jumper S2-B1 should connect to L2.1-B aka IN_B (default).**
 In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR-1
@@ -48,19 +50,23 @@ The serial monitor shows that SAID-1 channel-0 (L1.0 aka OUT0) is set to
 green, but it does not yet light up on the board. Next, the Serial monitor 
 shows that SAID-2 channel-0 (L2.0 aka IN0) is set to blue, but also this one 
 does not light up (yet). When the serial monitor shows "SYNC via telegram" 
-both light up in sync.
+both LEDs light up in sync.
 
 OUTPUT-1
 Welcome to aoosp_sync.ino
-version: result 0.1.10 spi 0.2.8 osp 0.2.2
-spi: init
+version: result 0.5.0 spi 1.0.1 osp 0.8.0
+spi: init(MCU-B)
 osp: init
+SAID-1 and SAID-2 waiting for SYNC
 SAID-1 channel-0 to green
 SAID-2 channel-0 to blue
 SYNC via telegram
 
 HARDWARE-2
-**The jumper S2-B1 should connect to 9/SYNC**
+The demo should run on the OSP32 board.
+Have a cable from the OUT connector to the IN connector. 
+**The jumper S2-B1 should connect to 9/SYNC.**
+In Arduino select board "ESP32S3 Dev Module".
 
 BEHAVIOR-2
 The serial monitor shows that SAID-1 channel-0 (L1.0 aka OUT0) is set to green, 
@@ -72,17 +78,18 @@ not light up green.
 
 OUTPUT-2
 Welcome to aoosp_sync.ino
-version: result 0.4.5 spi 0.5.8 osp 0.7.0
-spi: init
+version: result 0.5.0 spi 1.0.1 osp 0.8.0
+spi: init(MCU-B)
 osp: init
+SAID-1 and SAID-2 waiting for SYNC
 SAID-1 channel-0 to green
 SAID-2 channel-0 to blue
 SYNC SAID-2 via pin
 */
 
 
-// Set to 0 to use software sync (telegram) or 1 for hardware sync (gpio signal; SAID-2 only)
-// Note: for hardware sync, also put jumper J8 on OSP32 to connect SAID2.1B to GPIO9
+// Set to 0 to use software sync (telegram) or 1 for hardware sync (gpio signal; SAID-2 only).
+// Note: for hardware sync, also put jumper J8 on OSP32 to connect SAID2.1B to GPIO9.
 #define USE_HARDWARE_SYNC 0
 
 
@@ -109,13 +116,14 @@ void demo_sync() {
     // Note: also put jumper J8 on OSP32 to connect SAID2.1B to GPIO9
     // aoosp_exec_otpdump(0x002,AOOSP_OTPDUMP_CUSTOMER_ALL);
   #else
-    // No init for software sync
+    // No extra inits for software sync
   #endif
 
   // Configure SAID-1 channel-0 to wait for SYNC
   result= aoosp_send_setcurchn (0x001, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(001,0)"); 
   // Configure SAID-2 channel-0 to wait for SYNC
   result= aoosp_send_setcurchn (0x002, 0, AOOSP_CURCHN_FLAGS_SYNCEN, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT, AOOSP_CURCHN_CUR_DEFAULT ); CHECK_RESULT("aoosp_send_setcurchn(002,0)"); 
+  Serial.printf("SAID-1 and SAID-2 waiting for SYNC\n");
 
   // Configure SAID-1 channel-0 to go green
   Serial.printf("SAID-1 channel-0 to green\n");

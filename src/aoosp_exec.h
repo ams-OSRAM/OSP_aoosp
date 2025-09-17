@@ -44,19 +44,29 @@ aoresult_t aoosp_exec_syncpinenable_get(uint16_t addr, int * enable);
 // Writes the SYNC_PIN_EN bit to OTP (mirror).
 aoresult_t aoosp_exec_syncpinenable_set(uint16_t addr, int enable);
 
-// Writes to an I2C device connected to a SAID with I2C bridge..
+// Reads the SKIPCHNx bits from OTP (mirror).
+aoresult_t aoosp_exec_skipchns_get(uint16_t addr, int * skipchns);
+// Writes the SKIPCHNx bits to OTP (mirror).
+aoresult_t aoosp_exec_skipchns_set(uint16_t addr, int enable);
+
+// Writes to an I2C device (having registers with 8 bits addresses) connected to a SAID with I2C bridge..
 aoresult_t aoosp_exec_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t *buf, uint8_t count);
-// Reads from an I2C device connected to a SAID with I2C bridge.
+// Reads from an I2C device (having registers with 8 bits addresses) connected to a SAID with I2C bridge.
 aoresult_t aoosp_exec_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t *buf, uint8_t count);
+// Writes to an I2C device (having registers with 16 bits addresses) connected to a SAID with I2C bridge..
+aoresult_t aoosp_exec_i2cwrite12(uint16_t addr, uint8_t daddr7, uint16_t raddr, const uint8_t *buf, uint8_t count);
+// Reads from an I2C device (having registers with 16 bits addresses) connected to a SAID with I2C bridge.
+aoresult_t aoosp_exec_i2cread12(uint16_t addr, uint8_t daddr7, uint16_t raddr, uint8_t *buf, uint8_t count);
 
 
 // flags for aoosp_exec_otpdump determining what to print
-#define AOOSP_OTPDUMP_CUSTOMER_HEX    0x01
-#define AOOSP_OTPDUMP_CUSTOMER_FIELDS 0x02
-#define AOOSP_OTPDUMP_CUSTOMER_ALL    (AOOSP_OTPDUMP_CUSTOMER_HEX | AOOSP_OTPDUMP_CUSTOMER_FIELDS  )
+#define AOOSP_OTPDUMP_CUSTOMER_HEX        0x01
+#define AOOSP_OTPDUMP_CUSTOMER_FIELDSLIST 0x02
+#define AOOSP_OTPDUMP_CUSTOMER_FIELDS     0x04
+#define AOOSP_OTPDUMP_CUSTOMER_ALL        (AOOSP_OTPDUMP_CUSTOMER_HEX | AOOSP_OTPDUMP_CUSTOMER_FIELDS  )
 
-#define AOOSP_OTPADDR_CUSTOMER_MIN    0x0D
-#define AOOSP_OTPADDR_CUSTOMER_MAX    0x20
+#define AOOSP_OTPADDR_CUSTOMER_MIN        0x0D
+#define AOOSP_OTPADDR_CUSTOMER_MAX        0x20
 
 
 #endif

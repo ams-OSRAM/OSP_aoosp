@@ -337,7 +337,7 @@ static aoresult_t aoosp_con_initbidir(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 static aoresult_t aoosp_des_initbidir(aoosp_tele_t * tele, uint16_t * last, uint8_t * temp, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // temp, stat
   // Check telegram consistency
   if( tele==0 || last==0 || temp==0 || stat==0 ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -442,7 +442,7 @@ static aoresult_t aoosp_con_initloop(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_initloop(aoosp_tele_t * tele, uint16_t * last, uint8_t * temp, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // temp, stat
   // Check telegram consistency
   if( tele==0 || last==0 || temp==0 || stat==0 ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -741,7 +741,7 @@ static aoresult_t aoosp_con_identify(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_identify(aoosp_tele_t * tele, uint32_t * id) {
   // Set constants
-  const uint8_t payloadsize = 4;
+  const uint8_t payloadsize = 4; // id (4 bytes)
   // Check telegram consistency
   if( tele==0 || id==0                         ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -838,7 +838,7 @@ static aoresult_t aoosp_con_asktinfo(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_asktinfo(aoosp_tele_t * tele, uint8_t * tmin, uint8_t * tmax) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // tmin, tmax
   // Check telegram consistency
   if( tele==0 || tmin==0 || tmax==0            ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -1031,7 +1031,7 @@ static aoresult_t aoosp_con_readmult(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_readmult(aoosp_tele_t * tele, uint16_t *groups ) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // groups hi, groups lo 
   // Check telegram consistency
   if( tele==0 || groups==0                     ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -1106,7 +1106,7 @@ static aoresult_t aoosp_con_setmult(aoosp_tele_t * tele, uint16_t addr, uint16_t
   if( groups & ~0x7FFF        ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // groups hi, groups lo
   const uint8_t tid = 0x0D; // SETMULT
   //if( respsize ) *respsize = 4+0;
 
@@ -1725,7 +1725,7 @@ aoresult_t aoosp_send_gload(uint16_t addr) {
 
 
 // ==========================================================================
-// Telegram 18 I2CREAD
+// Telegram 18 I2CREAD (8 bits)
 
 
 static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint8_t raddr, uint8_t count) {
@@ -1737,7 +1737,7 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
   if( count<1 || count>8     ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 3;
+  const uint8_t payloadsize = 3; // daddr7, raddr, count
   const uint8_t tid = 0x18; // I2CREAD
   // if( respsize ) *respsize = 4+0; // nothing
 
@@ -1771,12 +1771,15 @@ static aoresult_t aoosp_con_i2cread8(aoosp_tele_t * tele, uint16_t addr, uint8_t
     @param  count
             The number of bytes to read from the I2C device (1..8).
     @return aoresult_ok if all ok, otherwise an error code.
+    @note   This issues an I2C transaction consisting of two segment:
+            START daddr7+w raddr START daddr7+r buf[0] buf[1] .. buf[count-1] STOP
     @note   After I2CREAD, use READI2CCFG to check if the I2C transaction 
             was successful. Then use READLAST to get the bytes the SAID read 
             from the I2C device.
-    @note   The SAID must have the I2C enable bit set in its OTP.
-            On startup, send SETCURCHN to power the I2C bus.
-    @note   The current implementation only supports the 8 bit mode.
+    @note   The SAID must have the I2C enable bit set in its OTP. On startup, 
+            send SETCURCHN to power the I2C bus, see aoosp_exec_i2cpower().
+    @note   This function is for the 8 bit mode (I2CCFG.I2C_12_BIT_ADDR=0),
+            see aoosp_send_i2cread12 for 12 bit mode.
     @note   The I2C transaction takes time, so wait after sending this telegram.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -1796,7 +1799,7 @@ aoresult_t aoosp_send_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
   // Log
   #if AOOSP_LOG_ENABLED
   if( aoosp_loglevel >= aoosp_loglevel_args ) {
-    Serial.printf("i2cread(0x%03X,0x%02X,0x%02X,%d)",addr,daddr7,raddr,count );
+    Serial.printf("i2cread8(0x%03X,0x%02X,0x%02X,%d)",addr,daddr7,raddr,count );
     if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
     if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
       else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
@@ -1809,7 +1812,96 @@ aoresult_t aoosp_send_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
 
 
 // ==========================================================================
-// Telegram 19 I2CWRITE
+// Telegram 18 I2CREAD (12 bits)
+
+
+static aoresult_t aoosp_con_i2cread12(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint16_t raddr, uint8_t count) {
+  // Check input parameters
+  if( tele==0                ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+  if( daddr7>127             ) return aoresult_osp_arg;
+  if( raddr>4095             ) return aoresult_osp_arg;
+  if( count<1 || count>8     ) return aoresult_osp_arg;
+
+  // Set constants
+  const uint8_t payloadsize = 3; // daddr7, raddr hi, raddr lo | count
+  const uint8_t tid = 0x18; // I2CREAD
+  // if( respsize ) *respsize = 4+0; // nothing
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = daddr7 << 1; // 7 bits address needs shifting
+  tele->data[4] = BITS_SLICE(raddr,4,12);
+  tele->data[5] = BITS_SLICE(raddr,0,4)<<4 | count;
+
+  tele->data[6] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a I2CREAD telegram.
+            This requests a SAID to master a read on its I2C bus.
+    @param  addr
+            The address to send the telegram to (unicast),
+            (theoretically use 0 for broadcast, or 3F0..3FE for group).
+    @param  daddr7
+            The 7 bits I2C device address used in mastering the read.
+    @param  raddr
+            The 12 bits register address used in mastering the read.
+    @param  count
+            The number of bytes to read from the I2C device (1..8).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   This issues an I2C transaction consisting of two segment:
+            START daddr7+w raddr[11:8] raddr[7:0] START daddr7+r buf[0] buf[1] .. buf[count-1] STOP
+    @note   After I2CREAD, use READI2CCFG to check if the I2C transaction 
+            was successful. Then use READLAST to get the bytes the SAID read 
+            from the I2C device.
+    @note   The SAID must have the I2C enable bit set in its OTP. On startup, 
+            send SETCURCHN to power the I2C bus, see aoosp_exec_i2cpower().
+    @note   This function is for the 12 bit mode (I2CCFG.I2C_12_BIT_ADDR=1),
+            see aoosp_send_i2cread8 for 8 bit mode.
+    @note   Although raddr can only be 12 bits in this OSP telegram, 
+            the I2C transaction uses 16 bits, by padding 0000 as MSBs.
+    @note   The I2C transaction takes time, so wait after sending this telegram.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_i2cread12(uint16_t addr, uint8_t daddr7, uint16_t raddr, uint8_t count ) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_i2cread12(&tele,addr,daddr7,raddr,count);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("i2cread12(0x%03X,0x%03X,0x%02X,%d)",addr,daddr7,raddr,count );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n" );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
+// Telegram 19 I2CWRITE (8 bits)
 
 
 static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t * buf, int count) {
@@ -1818,12 +1910,12 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
   if( !AOOSP_ADDR_ISOK(addr)   ) return aoresult_osp_addr;
   if( daddr7>127               ) return aoresult_osp_arg;
 //if( raddr>255                ) return aoresult_osp_arg;
-  if( count<1                  ) return aoresult_osp_arg; // SAID wants minimally one I2C byte
-  if( count+2>8                ) return aoresult_osp_arg; // telegram payload cannot exceed 8 bytes (two byte is for daddr/raddr)
-  if( count+2==5 || count+2==7 ) return aoresult_osp_arg; // telegram payloads 5 and 7 are not supported in OSP
+  if( count<1                  ) return aoresult_osp_arg;     // SAID wants minimally one I2C byte
+  if( count+2>8                ) return aoresult_osp_argsize; // telegram payload cannot exceed 8 bytes (two bytes is for daddr/raddr)
+  if( count+2==5 || count+2==7 ) return aoresult_osp_argsize; // telegram payloads 5 and 7 are not supported in OSP
 
   // Set constants
-  const uint8_t payloadsize = 2+count; // daddr, raddr and buf size (count)
+  const uint8_t payloadsize = 2+count;  // daddr, raddr, buf (count)
   const uint8_t tid = 0x19; // I2CWRITE
   // if( respsize ) *respsize = 4+0; // nothing
 
@@ -1838,7 +1930,7 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
   tele->data[4] = raddr;
   for( int i=0; i<count; i++ ) tele->data[5+i] = buf[i];
 
-  tele->data[3+2+count] = aoosp_crc( tele->data , tele->size - 1 );
+  tele->data[5+count] = aoosp_crc( tele->data , tele->size - 1 );
 
   return aoresult_ok;
 }
@@ -1859,10 +1951,13 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
     @param  count
             The number of bytes to write from the buffer (1, 2, 4, or 6).
     @return aoresult_ok if all ok, otherwise an error code.
+    @note   This issues an I2C transaction consisting of one segment:
+            START daddr7+w raddr buf[0] buf[1] .. buf[count-1] STOP
     @note   After I2CWRITE, use READI2CCFG to check if the I2C transaction was successful.
-    @note   The SAID must have the I2C enable bit set in its OTP.
-            On startup, send SETCURCHN to power the I2C bus.
-    @note   The current implementation only supports the 8 bit mode.
+    @note   The SAID must have the I2C enable bit set in its OTP. On startup, 
+            send SETCURCHN to power the I2C bus, see aoosp_exec_i2cpower().
+    @note   This function is for the 8 bit mode (I2CCFG.I2C_12_BIT_ADDR=0),
+            see aoosp_send_i2cread12 for 12 bit mode.
     @note   The I2C transaction takes time, so wait after sending this telegram.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
@@ -1883,6 +1978,98 @@ aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, co
   #if AOOSP_LOG_ENABLED
   if( aoosp_loglevel >= aoosp_loglevel_args ) {
     Serial.printf("i2cwrite(0x%03X,0x%02X,0x%02X,0x[%s])",addr,daddr7,raddr,aoosp_prt_bytes(buf,count));
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+    Serial.printf("\n" );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+// ==========================================================================
+// Telegram 19 I2CWRITE (12 bits)
+
+
+static aoresult_t aoosp_con_i2cwrite12(aoosp_tele_t * tele, uint16_t addr, uint8_t daddr7, uint16_t raddr, const uint8_t * buf, int count) {
+  // Check input parameters
+  if( tele==0 || buf==0        ) return aoresult_outargnull;
+  if( !AOOSP_ADDR_ISOK(addr)   ) return aoresult_osp_addr;
+  if( daddr7>127               ) return aoresult_osp_arg;
+  if( raddr>4095               ) return aoresult_osp_arg;
+  if( count<1                  ) return aoresult_osp_arg;     // SAID wants minimally one I2C byte
+  if( count+3>8                ) return aoresult_osp_argsize; // telegram payload cannot exceed 8 bytes (three bytes is for daddr/raddr)
+  if( count+3==5 || count+3==7 ) return aoresult_osp_argsize; // telegram payloads 5 and 7 are not supported in OSP
+
+  // Set constants
+  const uint8_t payloadsize = 3+count; // daddr, raddr hi, raddr lo, buf (count)
+  const uint8_t tid = 0x19; // I2CWRITE
+  // if( respsize ) *respsize = 4+0; // nothing
+
+  // Build telegram
+  tele->size    = payloadsize+4;
+
+  tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+  tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+  tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+  tele->data[3] = daddr7 << 1; // 7 bits device address needs shifting
+  tele->data[4] = 0b0000<<4 | BITS_SLICE(raddr,8,12); 
+  tele->data[5] = BITS_SLICE(raddr,0,8);
+  for( int i=0; i<count; i++ ) tele->data[6+i] = buf[i];
+
+  tele->data[6+count] = aoosp_crc( tele->data , tele->size - 1 );
+
+  return aoresult_ok;
+}
+
+
+/*!
+    @brief  Sends a I2CWRITE telegram.
+            This requests a SAID to master a write on its I2C bus.
+    @param  addr
+            The address to send the telegram to (unicast),
+            (theoretically, use 0 for broadcast, or 3F0..3FE for group).
+    @param  daddr7
+            The 7 bits I2C device address used in mastering the write.
+    @param  raddr
+            The 12 bits register address used in mastering the write.
+    @param  buf
+            Pointer to buffer containing the bytes to send to the I2C device.
+    @param  count
+            The number of bytes to write from the buffer (1, 3, or 5).
+    @return aoresult_ok if all ok, otherwise an error code.
+    @note   This issues an I2C transaction consisting of one segment:
+            START daddr7+w raddr[11:8] raddr[7:0] buf[0] buf[1] .. buf[count-1] STOP
+    @note   After I2CWRITE, use READI2CCFG to check if the I2C transaction was successful.
+    @note   The SAID must have the I2C enable bit set in its OTP. On startup, 
+            send SETCURCHN to power the I2C bus, see aoosp_exec_i2cpower().
+    @note   This function is for the 12 bit mode (I2CCFG.I2C_12_BIT_ADDR=1),
+            see aoosp_send_i2cread8 for 8 bit mode.
+    @note   Although raddr can only be 12 bits in this OSP telegram, 
+            the I2C transaction uses 16 bits, by padding 0000 as MSBs.
+    @note   The I2C transaction takes time, so wait after sending this telegram.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_i2cwrite12(uint16_t addr, uint8_t daddr7, uint16_t raddr, const uint8_t * buf, int count) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_i2cwrite12(&tele,addr,daddr7,raddr,buf,count);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_tx(tele.data,tele.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("i2cwrite12(0x%03X,0x%02X,0x%03X,0x[%s])",addr,daddr7,raddr,aoosp_prt_bytes(buf,count));
     if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
     if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
       else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
@@ -1930,7 +2117,7 @@ static aoresult_t aoosp_con_readlast(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_readlast(aoosp_tele_t * tele, uint8_t * buf, int size) {
   // Set constants
-  const uint8_t payloadsize = 8;
+  const uint8_t payloadsize = 8; // buf (8 bytes)
   // Check telegram consistency
   if( tele==0 || buf==0                        ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2040,7 +2227,7 @@ static aoresult_t aoosp_con_goactive_sr(aoosp_tele_t * tele, uint16_t addr, uint
 
 static aoresult_t aoosp_des_goactive_sr(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // temp, stat 
   // Check telegram consistency
   if( tele==0 || stat==0                       ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2159,7 +2346,7 @@ static aoresult_t aoosp_con_readstat(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_readstat(aoosp_tele_t * tele, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // stat
   // Check telegram consistency
   if( tele==0 || stat==0                       ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2255,7 +2442,7 @@ static aoresult_t aoosp_con_readtempstat(aoosp_tele_t * tele, uint16_t addr, uin
 
 static aoresult_t aoosp_des_readtempstat(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // temp, stat
   // Check telegram consistency
   if( tele==0 || temp==0 || stat==0            ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2357,7 +2544,7 @@ static aoresult_t aoosp_con_readcomst(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 static aoresult_t aoosp_des_readcomst(aoosp_tele_t * tele, uint8_t * com) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // com
   // Check telegram consistency
   if( tele==0 || com==0                        ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2455,7 +2642,7 @@ static aoresult_t aoosp_con_readledst(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 static aoresult_t aoosp_des_readledst(aoosp_tele_t * tele, uint8_t * ledst) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // ledst
   // Check telegram consistency
   if( tele==0 || ledst==0                      ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2538,7 +2725,7 @@ static aoresult_t aoosp_con_readledstchn(aoosp_tele_t * tele, uint16_t addr, uin
   if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // chn
   const uint8_t tid = 0x46; // READLEDST
   if( respsize ) *respsize = 4+1; // ledst
 
@@ -2559,7 +2746,7 @@ static aoresult_t aoosp_con_readledstchn(aoosp_tele_t * tele, uint16_t addr, uin
 
 static aoresult_t aoosp_des_readledstchn(aoosp_tele_t * tele, uint8_t * ledst) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // ledst
   // Check telegram consistency
   if( tele==0 || ledst==0                      ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2662,7 +2849,7 @@ static aoresult_t aoosp_con_readtemp(aoosp_tele_t * tele, uint16_t addr, uint8_t
 
 static aoresult_t aoosp_des_readtemp(aoosp_tele_t * tele, uint8_t * temp) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // temp
   // Check telegram consistency
   if( tele==0 || temp==0                       ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2762,7 +2949,7 @@ static aoresult_t aoosp_con_readsetup(aoosp_tele_t * tele, uint16_t addr, uint8_
 
 static aoresult_t aoosp_des_readsetup(aoosp_tele_t * tele, uint8_t *flags ) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // flags
   // Check telegram consistency
   if( tele==0 || flags==0                      ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -2834,7 +3021,7 @@ static aoresult_t aoosp_con_setsetup(aoosp_tele_t * tele, uint16_t addr, uint8_t
   if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // flags
   const uint8_t tid = 0x4D; // SETSETUP
   //if( respsize ) *respsize = 4+0;
 
@@ -2922,7 +3109,7 @@ static aoresult_t aoosp_con_readpwm(aoosp_tele_t * tele, uint16_t addr, uint8_t 
 // the three 1-bit daytimes flags are clubbed into one daytimes argument
 static aoresult_t aoosp_des_readpwm(aoosp_tele_t * tele, uint16_t *red, uint16_t *green, uint16_t *blue, uint8_t *daytimes) {
   // Set constants
-  const uint8_t payloadsize = 6;
+  const uint8_t payloadsize = 6; // red hi, red lo, grn hi, grn lo, blu hi, blu lo
   // Check telegram consistency
   if( tele==0 || red==0 || green==0 || blue==0 || daytimes==0 ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                               ) return aoresult_osp_size;
@@ -3009,7 +3196,7 @@ static aoresult_t aoosp_con_readpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8
   if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // chn
   const uint8_t tid = 0x4E; // READPWMCHN
   if( respsize ) *respsize = 4+6; // red, green, blue
 
@@ -3031,7 +3218,7 @@ static aoresult_t aoosp_con_readpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8
 // the meaning of the 16 color bits varies, not detailed here at telegram level
 static aoresult_t aoosp_des_readpwmchn(aoosp_tele_t * tele, uint16_t *red, uint16_t *green, uint16_t *blue ) {
   // Set constants
-  const uint8_t payloadsize = 6;
+  const uint8_t payloadsize = 6; // red hi, red lo, grn hi, grn lo, blu hi, blu lo
   // Check telegram consistency
   if( tele==0 || red==0 || green==0 || blue==0 ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -3121,7 +3308,7 @@ static aoresult_t aoosp_con_setpwm(aoosp_tele_t * tele, uint16_t addr, uint16_t 
   if( daytimes & ~BITS_MASK(3)  ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 6;
+  const uint8_t payloadsize = 6; // red hi, red lo, grn hi, grn lo, blu hi, blu lo
   const uint8_t tid = 0x4F; // SETPWM
   //if( respsize ) *respsize = 4+0;
 
@@ -3207,7 +3394,7 @@ static aoresult_t aoosp_con_setpwmchn(aoosp_tele_t * tele, uint16_t addr, uint8_
   if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 8;
+  const uint8_t payloadsize = 8; // chn, dummy, red hi, red lo, grn hi, grn lo, blu hi, blu lo
   const uint8_t tid = 0x4F; // SETPWMCHN (same SETPWM of OSP V1)
   //if( respsize ) *respsize = 4+0;
 
@@ -3298,7 +3485,7 @@ static aoresult_t aoosp_con_readcurchn(aoosp_tele_t * tele, uint16_t addr, uint8
   if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // chn
   const uint8_t tid = 0x50; // READCURCHN
   if( respsize ) *respsize = 4+2; // 3*4 PWM bits, 4 flags
 
@@ -3319,7 +3506,7 @@ static aoresult_t aoosp_con_readcurchn(aoosp_tele_t * tele, uint16_t addr, uint8
 
 static aoresult_t aoosp_des_readcurchn(aoosp_tele_t * tele, uint8_t *flags, uint8_t *rcur, uint8_t *gcur, uint8_t *bcur ) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // flags|rcur, gcur|bcur
   // Check telegram consistency
   if( tele==0 || flags==0 || rcur==0 || gcur==0 || bcur==0 ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                            ) return aoresult_osp_size;
@@ -3411,7 +3598,7 @@ static aoresult_t aoosp_con_setcurchn(aoosp_tele_t * tele, uint16_t addr, uint8_
   if( chn!=0 && chn!=1 && chn!=2 ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 3;
+  const uint8_t payloadsize = 3; // chn, flags|rcur, gcur|bcur
   const uint8_t tid = 0x51; // SETCURCHN
   //if( respsize ) *respsize = 4+0;
 
@@ -3482,8 +3669,8 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 
 
 // ==========================================================================
-// Telegram 52 READTCOEFF
-// Telegram 53 SETTCOEFF
+// Telegram 52 READTCOEFFCHN
+// Telegram 53 SETTCOEFFCHN
 
 
 // ==========================================================================
@@ -3515,7 +3702,7 @@ static aoresult_t aoosp_con_readadc(aoosp_tele_t * tele, uint16_t addr, uint8_t 
 
 static aoresult_t aoosp_des_readadc(aoosp_tele_t * tele, uint8_t *flags ) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // flags
   // Check telegram consistency
   if( tele==0 || flags==0                      ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -3591,7 +3778,7 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
  if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
 
  // Set constants
- const uint8_t payloadsize = 1;
+ const uint8_t payloadsize = 1; // flags
  const uint8_t tid = 0x55; // SETADC
  //if( respsize ) *respsize = 4+0;
 
@@ -3631,34 +3818,35 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
               temperature sensor, Vf_R0, Vf_R1, Vf_R2, 
               temperature sensor, Vf_B0, Vf_B1, Vf_B2, and
               temperature sensor, Vf_G0, Vf_G1, Vf_G2.
-            The results of the temperature sensor measurement are internally 
+            The results of the temperature sensor measurements are internally 
             stored, and available through telegrams READTEMP (or READTEMPSTAT)
             and ASKTINFO. 
             The results of nine forward voltage measurements are also 
             internally stored; all 9 are "maxed" together and stored in one 
             register (VFMAX), which is available via telegram ASKVINFO.
             In mux mode auto the ADC has a typical cycle of 18ms. This means 
-            that in the auto cycle temperature is updated every 6ms.
+            temperature is updated every 6ms.
     @note   If the ADC is configured with AOOSP_ADC_FLAGS_MUX_DRVxx (instead
             of AOOSP_ADC_FLAGS_MUX_AUTO), then the default ADC cycle is 
             stopped. The datasheet calls this mode "an ADC measurement is 
             requested", technically the ADC is in mux mode "driver" (aka 
             "single driver" or "driver xx"). 
             In this mode, the device has a short cycle; it alternates between 
-            a temperature sensor measurement and a forward voltage measurement 
-            of driver "xx". In other words, temperature is still available, 
+            a temperature sensor measurement and a voltage measurement of 
+            driver "xx". In other words, temperature is still available, 
             but ASKVINFO will give wrong results.
             In this mode, the reading from driver AOOSP_ADC_FLAGS_MUX_DRVxx
-            is stored in ADCDAT, which is available via telegram READADCDAT.
+            is stored in ADCDAT, which is available via telegram READADCDAT,
+            i.e. function aoosp_send_readadcdat().
             In mux mode driver the ADC has a cycle of 1.8ms. For the very 
             first measurement after SETADC wait two cycles (because the 
-            switch of the mux to the new driver is somewhere in the middle 
+            switch of the mux to driver DRVxx is somewhere in the middle 
             of a cycle).
     @note   In addition to the two mux modes, the ADC has also has two sync 
             modes: synced with the PWM engine (AOOSP_ADC_FLAGS_SYNC_ENA) or 
             not (AOOSP_ADC_FLAGS_SYNC_DIS).
-            The former configuration is typical when measuring the Vf of a 
-            LED (because that needs to be done when PWM is high), the latter 
+            The sync enabled configuration is typical when measuring the Vf 
+            of a LED (because that needs to be synced to PWM high), the latter 
             configuration is typical when the ADC is used as a generic voltage
             measurement tool, with an externally applied voltage to the pad.
     @note   When the ADC is used to measure a forward voltage of an LED, the 
@@ -3692,7 +3880,7 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
                  LED  Vadc=2.0V => Vf=2.0V    
                   |                                   
             SAID--+                           SAID--o   Vadc=2.0V => Vpad=3.0V
-                     
+    @note   Voltage drops over ~3.5V are out of range.                             
 */
 aoresult_t aoosp_send_setadc(uint16_t addr, uint8_t flags) {
   // Telegram and result vars
@@ -3751,7 +3939,7 @@ static aoresult_t aoosp_con_readi2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8
 
 static aoresult_t aoosp_des_readi2ccfg(aoosp_tele_t * tele, uint8_t *flags, uint8_t * speed ) {
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // flags|speed
   // Check telegram consistency
   if( tele==0 || flags==0 || speed==0          ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -3832,7 +4020,7 @@ static aoresult_t aoosp_con_seti2ccfg(aoosp_tele_t * tele, uint16_t addr, uint8_
   if( speed==0               ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // flags|speed
   const uint8_t tid = 0x57; // SETI2CCFG
   //if( respsize ) *respsize = 4+0;
 
@@ -3906,7 +4094,7 @@ static aoresult_t aoosp_con_readotp(aoosp_tele_t * tele, uint16_t addr, uint8_t 
   if( otpaddr > 0x1F         ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 1;
+  const uint8_t payloadsize = 1; // otpaddr
   const uint8_t tid = 0x58; // READOTP
   if( respsize ) *respsize = 4+8; // otp row
 
@@ -3927,7 +4115,7 @@ static aoresult_t aoosp_con_readotp(aoosp_tele_t * tele, uint16_t addr, uint8_t 
 
 static aoresult_t aoosp_des_readotp(aoosp_tele_t * tele, uint8_t * buf, int size) {
   // Set constants
-  const uint8_t payloadsize = 8;
+  const uint8_t payloadsize = 8; // buf (8 bytes)
   // Check telegram consistency
   if( tele==0 || buf==0                        ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -4026,7 +4214,7 @@ static aoresult_t aoosp_con_setotp(aoosp_tele_t * tele, uint16_t addr, uint8_t o
   if( size   != 7            ) return aoresult_osp_arg;
 
   // Set constants
-  const uint8_t payloadsize = 8; // 1 for otp target address, 7 for data
+  const uint8_t payloadsize = 8; // 1 for otp target address, 7 for buf
   const uint8_t tid = 0x59; // SETOTP
   // if( respsize ) *respsize = 4+0; // nothing
 
@@ -4118,7 +4306,7 @@ static aoresult_t aoosp_con_settestdata(aoosp_tele_t * tele, uint16_t addr, uint
   if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
 
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // data hi, data lo
   const uint8_t tid = 0x5B; // SETTESTDATA
   //if( respsize ) *respsize = 4+0;
 
@@ -4209,7 +4397,7 @@ static aoresult_t aoosp_con_readadcdat(aoosp_tele_t * tele, uint16_t addr, uint8
 
 static aoresult_t aoosp_des_readadcdat(aoosp_tele_t * tele, uint16_t *adcdat ) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // adcdat hi, adcdat lo
   // Check telegram consistency
   if( tele==0 || adcdat==0                     ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
@@ -4239,8 +4427,8 @@ static aoresult_t aoosp_des_readadcdat(aoosp_tele_t * tele, uint16_t *adcdat ) {
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
     @note   The ADC must first be configured; 
             see aoosp_send_setadc() for details.
+    @note   Voltage drops over ~3.5V are out of range.            
     @note   To converting raw ADC to volt see `aoosp_prt_adc()`.
-            
 */
 aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t *adcdat ) {
   // Telegram and result vars
@@ -4294,7 +4482,7 @@ static aoresult_t aoosp_con_settestpw(aoosp_tele_t * tele, uint16_t addr, uint64
   if( pw == AOOSP_SAID_TESTPW_UNKNOWN ) Serial.printf("WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it\n");
 
   // Set constants
-  const uint8_t payloadsize = 6;
+  const uint8_t payloadsize = 6; // pw (6 bytes)
   const uint8_t tid = 0x5F; // SETTESTPW
   // if( respsize ) *respsize = 4+0; // nothing
 
@@ -4382,7 +4570,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw) {
 // Telegram 6F SETPWM_SR
 // Telegram 6F SETPWMCHN_SR
 // Telegram 71 SETCURCHN_SR
-// Telegram 73 SETTCOEFF_SR
+// Telegram 73 SETTCOEFFCHN_SR
 // Telegram 75 SETADC_SR
 // Telegram 77 SETI2CCFG_SR
 // Telegram 79 SETOTP_SR
@@ -4400,7 +4588,7 @@ static aoresult_t aoosp_con_settestpw_sr(aoosp_tele_t * tele, uint16_t addr, uin
   if( pw == AOOSP_SAID_TESTPW_UNKNOWN ) Serial.printf("WARNING: ask ams-OSRAM for TESTPW and see aoosp_said_testpw_get() for how to set it\n");
 
   // Set constants
-  const uint8_t payloadsize = 6;
+  const uint8_t payloadsize = 6; // pw (6 bytes)
   const uint8_t tid = 0x7F; // SETTESTPW_SR
   if( respsize ) *respsize = 4+2; // temp,stat
 
@@ -4421,7 +4609,7 @@ static aoresult_t aoosp_con_settestpw_sr(aoosp_tele_t * tele, uint16_t addr, uin
 
 static aoresult_t aoosp_des_settestpw_sr(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
   // Set constants
-  const uint8_t payloadsize = 2;
+  const uint8_t payloadsize = 2; // temp, stat
   // Check telegram consistency
   if( tele==0 || stat==0                       ) return aoresult_outargnull;
   if( tele->size!=4+payloadsize                ) return aoresult_osp_size;

@@ -27,7 +27,7 @@
 // ===== SAID test password =================================================
 
 
-//#include "../../said-password.h" // pull-in the password if available
+//#include "../../said-password.h" // remove comment if password file is available
 #ifndef AOOSP_SAID_TESTPW
   // SAID test password unknown: use the one that generates warnings
   #define AOOSP_SAID_TESTPW   AOOSP_SAID_TESTPW_UNKNOWN
