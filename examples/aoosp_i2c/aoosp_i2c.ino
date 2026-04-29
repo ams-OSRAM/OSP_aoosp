@@ -91,7 +91,7 @@ Press INT button and check L1.0 aka OUT0
 // OSP node address of the SAID to use for I2C
 #define ADDR    0x001 // OSP32 has SAID1 with I2C on addr 001
 // I2C device address
-#define DADDR   0x54 // OSP32 has EEPROM with this address on SAID1
+#define DADDR7   0x54 // OSP32 has EEPROM with this address on SAID1
 
 
 // Print a table of all I2C device addresses that acknowledge a read
@@ -129,12 +129,12 @@ void i2c_scan() {
     int i2cfail=  result==aoresult_dev_i2cnack || result==aoresult_dev_i2ctimeout;
     if( result!=aoresult_ok && !i2cfail )  { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
     if( i2cfail ) Serial.printf(" %02x ",daddr7); else Serial.printf("[%02x]",daddr7); // [] brackets indicate presence
-    if( !i2cfail && daddr7==DADDR ) found++;
+    if( !i2cfail && daddr7==DADDR7 ) found++;
     if( !i2cfail ) count++;
     if( daddr7 % 8 == 7) Serial.printf("\n");
   }
   Serial.printf("SAID %03X has %d I2C devices (see square brackets)\n", ADDR, count);
-  if( !found ) Serial.printf("WARNING: expect I2C device with address %02X, but did find any\n",DADDR);
+  if( !found ) Serial.printf("WARNING: expect I2C device with address %02X, but did find any\n",DADDR7);
 
   Serial.printf("\n");
 }
@@ -171,9 +171,9 @@ void i2c_eeprom() {
   result= aoosp_exec_i2cpower(ADDR);
   if( result!=aoresult_ok ) { Serial.printf("i2cpower %s\n", aoresult_to_str(result) ); return; }
 
-  Serial.printf("\nRead/write (locations 00..07 of EEPROM %02X on SAID %03X)\n",DADDR,ADDR);
+  Serial.printf("\nRead/write (locations 00..07 of EEPROM %02X on SAID %03X)\n",DADDR7,ADDR);
   // Dump the first 8 bytes of the I2C EEPROM memory
-  result= aoosp_exec_i2cread8(ADDR, DADDR, 0x00, rbuf1, 8); 
+  result= aoosp_exec_i2cread8(ADDR, DADDR7, 0x00, rbuf1, 8); 
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf1[i]);
@@ -181,11 +181,11 @@ void i2c_eeprom() {
 
   // Modify bytes 2 and 3 of the I2C EEPROM memory
   wbuf[0]= 0xBE; wbuf[1]=0xEF;
-  result= aoosp_exec_i2cwrite8(ADDR, DADDR, 0x02, wbuf, 2); 
+  result= aoosp_exec_i2cwrite8(ADDR, DADDR7, 0x02, wbuf, 2); 
   if( result!=aoresult_ok ) { Serial.printf("i2cwrite8 %s\n", aoresult_to_str(result) ); return; }
 
   // Dump the first 8 bytes of the I2C EEPROM memory
-  result= aoosp_exec_i2cread8(ADDR, DADDR, 0x00, rbuf2, 8); 
+  result= aoosp_exec_i2cread8(ADDR, DADDR7, 0x00, rbuf2, 8); 
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf2[i]);
@@ -193,11 +193,11 @@ void i2c_eeprom() {
 
   // Restore bytes 2 and 3 of the I2C EEPROM memory
   wbuf[0]= rbuf1[2]; wbuf[1]=rbuf1[3];
-  result= aoosp_exec_i2cwrite8(ADDR, DADDR, 0x02, wbuf, 2); 
+  result= aoosp_exec_i2cwrite8(ADDR, DADDR7, 0x02, wbuf, 2); 
   if( result!=aoresult_ok ) { Serial.printf("i2cwrite8 %s\n", aoresult_to_str(result) ); return; }
 
   // Dump the first 8 bytes of the I2C EEPROM eepromory
-  result= aoosp_exec_i2cread8(ADDR, DADDR, 0x00, rbuf2, 8); 
+  result= aoosp_exec_i2cread8(ADDR, DADDR7, 0x00, rbuf2, 8); 
   if( result!=aoresult_ok ) { Serial.printf("i2cread8 %s\n", aoresult_to_str(result) ); return; }
   Serial.printf("eeprom");
   for( int i=0; i<8; i++ ) Serial.printf(" %02X",rbuf2[i]);

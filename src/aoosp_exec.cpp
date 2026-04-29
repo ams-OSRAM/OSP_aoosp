@@ -1,6 +1,6 @@
 // aoosp_exec.cpp - execute high level OSP routines (several telegrams)
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -175,14 +175,21 @@ aoresult_t aoosp_exec_otpdump(uint16_t addr, int flags) {
   uint8_t    otp[OTPSIZE];
 
   // Switch logging off temporarily
-  aoosp_loglevel_t prev_log_level= aoosp_loglevel_get();
-  aoosp_loglevel_set(aoosp_loglevel_none);
+  #if AOOSP_LOG_ENABLED
+    aoosp_loglevel_t prev_log_level= aoosp_loglevel_get();
+    aoosp_loglevel_set(aoosp_loglevel_none);
+  #endif // AOOSP_LOG_ENABLED
+  
   for( int otpaddr=0x00; otpaddr<OTPSIZE; otpaddr+=OTPSTEP ) {
     result= aoosp_send_readotp(addr,otpaddr,otp+otpaddr,OTPSTEP);
     if( result!=aoresult_ok ) break;
   }
+  
   // Switch logging back to previous state
-  aoosp_loglevel_set(prev_log_level);
+  #if AOOSP_LOG_ENABLED
+    aoosp_loglevel_set(prev_log_level);
+  #endif // AOOSP_LOG_ENABLED
+  // Return only after restoring log-level
   if( result!=aoresult_ok ) return result;
 
   if( flags & AOOSP_OTPDUMP_CUSTOMER_HEX ) {
@@ -556,7 +563,7 @@ aoresult_t aoosp_exec_skipchns_set(uint16_t addr, int skipchns) {
     @param  buf
             Pointer to buffer containing the bytes to send to the I2C device.
     @param  count
-            The number of bytes to write from the buffer (1, 2, 4, or 6).
+            The number of bytes to write from the buffer (1, 2, 3, 4, or 6).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   See also (the notes of) aoosp_send_i2cwrite8.
 */
@@ -635,7 +642,7 @@ aoresult_t aoosp_exec_i2cread8(uint16_t addr, uint8_t daddr7, uint8_t raddr, uin
     @param  buf
             Pointer to buffer containing the bytes to send to the I2C device.
     @param  count
-            The number of bytes to write from the buffer (1, 3, or 5).
+            The number of bytes to write from the buffer (1, 2, 3, or 5).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   See also (the notes of) aoosp_send_i2cwrite12.
 */

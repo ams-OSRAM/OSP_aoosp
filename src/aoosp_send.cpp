@@ -1,6 +1,6 @@
 // aoosp_send.cpp - send command telegrams (and receive response telegrams)
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -1911,8 +1911,9 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
   if( daddr7>127               ) return aoresult_osp_arg;
 //if( raddr>255                ) return aoresult_osp_arg;
   if( count<1                  ) return aoresult_osp_arg;     // SAID wants minimally one I2C byte
-  if( count+2>8                ) return aoresult_osp_argsize; // telegram payload cannot exceed 8 bytes (two bytes is for daddr/raddr)
-  if( count+2==5 || count+2==7 ) return aoresult_osp_argsize; // telegram payloads 5 and 7 are not supported in OSP
+//if( count+2==5               ) return aoresult_osp_argsize; // telegram payload size 5 is not supported in OSP 1.0 (but is supported in 1.1)
+  if( count+2==7               ) return aoresult_osp_argsize; // telegram payload size 7 is not supported in OSP
+  if( count+2>8                ) return aoresult_osp_argsize; // telegram payload size cannot exceed 8 bytes (two bytes is for daddr/raddr)
 
   // Set constants
   const uint8_t payloadsize = 2+count;  // daddr, raddr, buf (count)
@@ -1949,7 +1950,7 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
     @param  buf
             Pointer to buffer containing the bytes to send to the I2C device.
     @param  count
-            The number of bytes to write from the buffer (1, 2, 4, or 6).
+            The number of bytes to write from the buffer (1, 2, 3, 4, or 6).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   This issues an I2C transaction consisting of one segment:
             START daddr7+w raddr buf[0] buf[1] .. buf[count-1] STOP
@@ -1959,6 +1960,10 @@ static aoresult_t aoosp_con_i2cwrite8(aoosp_tele_t * tele, uint16_t addr, uint8_
     @note   This function is for the 8 bit mode (I2CCFG.I2C_12_BIT_ADDR=0),
             see aoosp_send_i2cread12 for 12 bit mode.
     @note   The I2C transaction takes time, so wait after sending this telegram.
+    @note   A count of 3 results in a telegram with a PSI of 5. 
+            OSP nodes adhering to OSP v1.0 (like in RGBBI) do not forward those. 
+            OSP V1.1 (SAID) supports a PSI of 5. 
+    @note   A count of 5 results in a telegram with a PSI of 7 which is not supported.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_i2cwrite8(uint16_t addr, uint8_t daddr7, uint8_t raddr, const uint8_t * buf, int count) {
@@ -2000,8 +2005,9 @@ static aoresult_t aoosp_con_i2cwrite12(aoosp_tele_t * tele, uint16_t addr, uint8
   if( daddr7>127               ) return aoresult_osp_arg;
   if( raddr>4095               ) return aoresult_osp_arg;
   if( count<1                  ) return aoresult_osp_arg;     // SAID wants minimally one I2C byte
-  if( count+3>8                ) return aoresult_osp_argsize; // telegram payload cannot exceed 8 bytes (three bytes is for daddr/raddr)
-  if( count+3==5 || count+3==7 ) return aoresult_osp_argsize; // telegram payloads 5 and 7 are not supported in OSP
+//if( count+3==5               ) return aoresult_osp_argsize; // telegram payload size 5 is not supported in OSP 1.0 (but is supported in 1.1)
+  if( count+3==7               ) return aoresult_osp_argsize; // telegram payload size 7 is not supported in OSP
+  if( count+3>8                ) return aoresult_osp_argsize; // telegram payload size cannot exceed 8 bytes (three bytes is for daddr/raddr)
 
   // Set constants
   const uint8_t payloadsize = 3+count; // daddr, raddr hi, raddr lo, buf (count)
@@ -2039,7 +2045,7 @@ static aoresult_t aoosp_con_i2cwrite12(aoosp_tele_t * tele, uint16_t addr, uint8
     @param  buf
             Pointer to buffer containing the bytes to send to the I2C device.
     @param  count
-            The number of bytes to write from the buffer (1, 3, or 5).
+            The number of bytes to write from the buffer (1, 2, 3, or 5).
     @return aoresult_ok if all ok, otherwise an error code.
     @note   This issues an I2C transaction consisting of one segment:
             START daddr7+w raddr[11:8] raddr[7:0] buf[0] buf[1] .. buf[count-1] STOP
@@ -2051,6 +2057,10 @@ static aoresult_t aoosp_con_i2cwrite12(aoosp_tele_t * tele, uint16_t addr, uint8
     @note   Although raddr can only be 12 bits in this OSP telegram, 
             the I2C transaction uses 16 bits, by padding 0000 as MSBs.
     @note   The I2C transaction takes time, so wait after sending this telegram.
+    @note   A count of 2 results in a telegram with a PSI of 5. 
+            OSP nodes adhering to OSP v1.0 (like in RGBBI) do not forward those. 
+            OSP V1.1 (SAID) supports a PSI of 5.
+    @note   A count of 4 results in a telegram with a PSI of 7 which is not supported.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
 */
 aoresult_t aoosp_send_i2cwrite12(uint16_t addr, uint8_t daddr7, uint16_t raddr, const uint8_t * buf, int count) {
@@ -2193,7 +2203,7 @@ aoresult_t aoosp_send_readlast(uint16_t addr, uint8_t * buf, int size) {
 // Telegram 1F -- free
 // Telegram 20 -- RESET has no SR
 // Telegram 21 CLRERROR_SR
-// Telegram 22 -- INIBIDIR has no SR
+// Telegram 22 -- INITBIDIR has no SR
 // Telegram 23 -- INITLOOP has no SR
 // Telegram 24 GOSLEEP_SR
 
@@ -3805,16 +3815,16 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
             (use 0 for broadcast, or 3F0..3FE for group).
     @param  flags
             The new ADC configuration of the addressed node.
-            Composed from AOOSP_ADC_FLAGS_xxx; typically one 
-            AOOSP_ADC_FLAGS_SYNC_xxx and one AOOSP_ADC_FLAGS_MUX_xxx.
+            Composed from AOOSP_ADC_FLAGS_xxx: typically one "sync" 
+            AOOSP_ADC_FLAGS_SYNC_xxx and one "mux" AOOSP_ADC_FLAGS_MUX_xxx.
     @return aoresult_ok if all ok, otherwise an error code.
     @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
-    @note   A SAID contains an ADC that constantly performs measurements. The 
-            datasheet calls this mode "no ADC measurement is requested", and 
-            technically this means that the ADC mux is in mux mode "auto"
-            (flags=AOOSP_ADC_FLAGS_MUX_AUTO), which is the default. In mux
-            mode auto these items are measured (by automatically changing the 
-            ADC mux in a round robin style)
+    @note   A SAID contains an ADC that constantly performs measurements. 
+            The datasheet calls this mode "no ADC measurement is requested"
+            (with the stress on "requested"), and technically this means that 
+            the ADC mux is in mux mode "auto" (flags=AOOSP_ADC_FLAGS_MUX_AUTO), 
+            which is the default. In mux mode auto these items are measured 
+            (by automatically changing the ADC mux in a round robin style)
               temperature sensor, Vf_R0, Vf_R1, Vf_R2, 
               temperature sensor, Vf_B0, Vf_B1, Vf_B2, and
               temperature sensor, Vf_G0, Vf_G1, Vf_G2.
@@ -3834,21 +3844,22 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
             In this mode, the device has a short cycle; it alternates between 
             a temperature sensor measurement and a voltage measurement of 
             driver "xx". In other words, temperature is still available, 
-            but ASKVINFO will give wrong results.
+            but voltage (ASKVINFO) will give wrong results.
             In this mode, the reading from driver AOOSP_ADC_FLAGS_MUX_DRVxx
             is stored in ADCDAT, which is available via telegram READADCDAT,
             i.e. function aoosp_send_readadcdat().
             In mux mode driver the ADC has a cycle of 1.8ms. For the very 
             first measurement after SETADC wait two cycles (because the 
-            switch of the mux to driver DRVxx is somewhere in the middle 
+            switch of the mux to driver xx is somewhere in the middle 
             of a cycle).
     @note   In addition to the two mux modes, the ADC has also has two sync 
             modes: synced with the PWM engine (AOOSP_ADC_FLAGS_SYNC_ENA) or 
             not (AOOSP_ADC_FLAGS_SYNC_DIS).
             The sync enabled configuration is typical when measuring the Vf 
-            of a LED (because that needs to be synced to PWM high), the latter 
-            configuration is typical when the ADC is used as a generic voltage
-            measurement tool, with an externally applied voltage to the pad.
+            of a LED (because that needs to be synced to PWM high). The sync 
+            disabled configuration is typical when the ADC is used as a 
+            generic voltage measurement tool, with an externally applied 
+            voltage to the pad.
     @note   When the ADC is used to measure a forward voltage of an LED, the 
             PWM high part must be at least 0x600 for the ADC to measure 
             successfully. 
@@ -3880,7 +3891,12 @@ static aoresult_t aoosp_con_setadc(aoosp_tele_t * tele, uint16_t addr, uint8_t f
                  LED  Vadc=2.0V => Vf=2.0V    
                   |                                   
             SAID--+                           SAID--o   Vadc=2.0V => Vpad=3.0V
-    @note   Voltage drops over ~3.5V are out of range.                             
+            
+    @note   Voltage drops over ~3.5V are out of range.        
+    @note   To converting raw ADC to volt see `aoosp_prt_adc()`.
+    @note   In addition to the nine drivers (AOOSP_ADC_FLAGS_MUX_DRVxx), 
+            the mux has one other published input, a VDD measurement; use
+            input AOOSP_ADC_FLAGS_MUX_VDD for that.
 */
 aoresult_t aoosp_send_setadc(uint16_t addr, uint8_t flags) {
   // Telegram and result vars
@@ -4198,12 +4214,12 @@ aoresult_t aoosp_send_readotp(uint16_t addr, uint8_t otpaddr, uint8_t * buf, int
 // (1) SETOTP only works when the correct password is first sent using TESTPW.
 // (2) SETOTP can only write blocks of 7 bytes, no more, no less.
 // (3) SETOTP doesn't write to OTP, rather it writes to its shadow P2RAM.
-// (4) P2RAM is initialized (copied) from OTP at startup.
+// (4) P2RAM is initialized (copied from OTP) at startup.
 // (5) P2RAM is non-persistent over power cycles.
 // (6) P2RAM is persistent over a RESET telegram.
-// (7) The I2C_EN (in OTP at 0D.0) is inspected by the SAID when sending it I2C telegrams.
+// (7) The I2C_EN (in OTP at 0D.0) is inspected by the SAID when sending I2C telegrams.
 // (8) The SPI_MODE (in OTP at 0D.3) is inspected by the SAID at startup, so P2RAM value is irrelevant.
-// (9) At this moment I do not know how to flash P2RAM to OTP to make settings persistent.
+// (9) See example aoosp_otpburn.ino for how to flash P2RAM to OTP to make settings persistent.
 
 
 static aoresult_t aoosp_con_setotp(aoosp_tele_t * tele, uint16_t addr, uint8_t otpaddr, uint8_t * buf, int size) {
@@ -4258,7 +4274,7 @@ static aoresult_t aoosp_con_setotp(aoosp_tele_t * tele, uint16_t addr, uint8_t o
     @note   SETOTP only works when the correct password is first sent using TESTPW.
             Without the TESPW set, the SETOTP does not update the OTP mirror.
             The TETSPW must be unset (eg set to 0) for normal operation,
-            because in when the test password is set the node garbles             
+            because when the test password is set the node garbles             
             forwarded telegrams.
     @note   The OTP access takes time, so wait 60us after sending this telegram.
     @note   See the high-level function aoosp_exec_setotp().
@@ -4571,7 +4587,119 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw) {
 // Telegram 6F SETPWMCHN_SR
 // Telegram 71 SETCURCHN_SR
 // Telegram 73 SETTCOEFFCHN_SR
-// Telegram 75 SETADC_SR
+
+
+// ==========================================================================
+// Telegram 75 SETADC_SR - configures the ADC to measure Vf of any of the drivers
+
+
+static aoresult_t aoosp_con_setadc_sr(aoosp_tele_t * tele, uint16_t addr, uint8_t flags, uint8_t * respsize) {
+ // Check input parameters
+ if( tele==0                ) return aoresult_outargnull;
+ if( !AOOSP_ADDR_ISOK(addr) ) return aoresult_osp_addr;
+
+ // Set constants
+ const uint8_t payloadsize = 1; // flags
+ const uint8_t tid = 0x75; // SETADC
+ if( respsize ) *respsize = 4+2; // temp,stat
+
+ // Build telegram
+ tele->size    = payloadsize+4;
+
+ tele->data[0] = 0xA0 | BITS_SLICE(addr,6,10);
+ tele->data[1] = BITS_SLICE(addr,0,6)<<2 | BITS_SLICE(SIZE2PSI(payloadsize),1,3);
+ tele->data[2] = BITS_SLICE(SIZE2PSI(payloadsize),0,1)<<7 | tid;
+
+ tele->data[3] = flags;
+
+ tele->data[4] = aoosp_crc( tele->data , tele->size - 1 );
+
+ return aoresult_ok;
+}
+                     
+        
+static aoresult_t aoosp_des_setadc_sr(aoosp_tele_t * tele, uint8_t * temp, uint8_t * stat) {
+  // Set constants
+  const uint8_t payloadsize = 2; // temp, stat 
+  // Check telegram consistency
+  if( tele==0 || stat==0                       ) return aoresult_outargnull;
+  if( tele->size!=4+payloadsize                ) return aoresult_osp_size;
+  if( TELEPSI(tele)!=SIZE2PSI(payloadsize)     ) return aoresult_osp_psi;
+  if( BITS_SLICE(tele->data[0],4,8)!=0xA       ) return aoresult_osp_preamble;
+  if( BITS_SLICE(tele->data[2],0,7)!=0x75      ) return aoresult_osp_tid;
+  if( aoosp_crc(tele->data,tele->size)!=0      ) return aoresult_osp_crc;
+
+  // Get fields
+  *temp = tele->data[3];
+  *stat = tele->data[4];
+
+  return aoresult_ok;
+}
+
+        
+/*!
+    @brief  Sends a SETADC_SR telegram and receives a status response.
+            Configures the ADC of the addressed node.
+    @param  addr
+            The address to send the telegram to (unicast),
+            (use 0 for broadcast, or 3F0..3FE for group).
+    @param  flags
+            The new ADC configuration of the addressed node.
+            Composed from AOOSP_ADC_FLAGS_xxx: typically one "sync" 
+            AOOSP_ADC_FLAGS_SYNC_xxx and one "mux" AOOSP_ADC_FLAGS_MUX_xxx.
+    @param  temp
+            Output parameter returning the raw temperature of the addressed node.
+    @param  stat
+            Output parameter returning the (system) status of the addressed node.
+    @return aoresult_ok if all ok, otherwise an error code.
+            When returning aoresult_ok, the output parameters are set.
+    @note   See `aoosp_send_setadc()` for details.
+    @note   When logging enabled with aoosp_loglevel_set(), logs to Serial.
+*/
+aoresult_t aoosp_send_setadc_sr(uint16_t addr, uint8_t flags, uint8_t * temp, uint8_t * stat) {
+  // Telegram and result vars
+  aoosp_tele_t tele;
+  aoosp_tele_t resp;
+  aoresult_t   result    = aoresult_ok;
+  aoresult_t   con_result= aoresult_ok;
+  aoresult_t   spi_result= aoresult_ok;
+  aoresult_t   des_result= aoresult_ok;
+
+  // Construct, send and optionally destruct
+  if(     result==aoresult_ok ) con_result= aoosp_con_setadc_sr(&tele,addr,flags,&resp.size);
+  if( con_result!=aoresult_ok ) result=con_result;
+  if(     result==aoresult_ok ) spi_result= aospi_txrx(tele.data,tele.size,resp.data,resp.size);
+  if( spi_result!=aoresult_ok ) result= spi_result;
+  if(     result==aoresult_ok ) des_result = aoosp_des_setadc_sr(&resp, temp, stat);
+  if( des_result!=aoresult_ok ) result=des_result;
+
+  // Log
+  #if AOOSP_LOG_ENABLED
+  if( aoosp_loglevel >= aoosp_loglevel_args ) {
+    Serial.printf("setadc_sr(0x%03X,0x%02X)",addr,flags);
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [tele %s]",aoosp_prt_bytes(tele.data,tele.size));
+    if( con_result!=aoresult_ok ) Serial.printf(" [constructor ERROR %s]", aoresult_to_str(con_result) );
+      else if( spi_result!=aoresult_ok ) Serial.printf(" [SPI ERROR %s]", aoresult_to_str((aoresult_t)spi_result) );
+      else if( des_result!=aoresult_ok ) Serial.printf(" [destructor ERROR %s]", aoresult_to_str(des_result) );
+    Serial.printf(" ->" );
+    if( aoosp_loglevel >= aoosp_loglevel_tele ) Serial.printf(" [resp %s]",aoosp_prt_bytes(resp.data,resp.size));
+    Serial.printf(" temp=0x%02X=%d stat=0x%02X=%s", *temp, aoosp_prt_temp_said(*temp), *stat, aoosp_prt_stat_said(*stat) );
+    Serial.printf(" (%d, %s)\n",  aoosp_prt_temp_rgbi(*temp), aoosp_prt_stat_rgbi(*stat) );
+  }
+  #endif // AOOSP_LOG_ENABLED
+
+  return result;
+}
+
+
+
+
+
+
+
+
+// ==========================================================================
+
 // Telegram 77 SETI2CCFG_SR
 // Telegram 79 SETOTP_SR
 

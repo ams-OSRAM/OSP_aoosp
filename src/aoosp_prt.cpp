@@ -1,6 +1,6 @@
 // aoosp_prt.cpp - helpers to pretty print OSP telegrams in human readable form
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -91,21 +91,38 @@ int aoosp_prt_temp_said(uint8_t temp) {
 
 
 /*!
-    @brief  Converts SAID raw ADC measurement result into a voltage.
+    @brief  Converts SAID raw ADC driver measurement result into a voltage.
     @param  adcdat
             ADC result byte reported by READADCDAT
     @return The voltage associated to adcdat (in mV).
     @note   V = ADC_GAIN * (ADCDAT-2)
             Datasheet: ADC_GAIN=3.494 mV/LSB
     @note   Voltage drops over ~3.5V are out of range.
-    @note   See aoosp_send_setadc().
+    @note   When using AOOSP_ADC_FLAGS_MUX_DRVxx in aoosp_send_setadc().
 */
 int aoosp_prt_adc(uint16_t adcdat) {
   if( adcdat<2 ) return 0;
-  #define ADCGAIN    3494 // uV/LSB
+  #define ADCGAIN1    3494 // uV/LSB
   // adcdat is 16 bit, fits in 32 bits int, even after multiplying with ADCGAIN
-  int Vf= (((int)adcdat)-2)*ADCGAIN; // in uV
+  int Vf= (((int)adcdat)-2)*ADCGAIN1; // in uV
   // 0 <= Vf <= (1023-2)*3494=3567374=3.567V
+  return (Vf+500)/1000; // round to mV
+}
+
+
+/*!
+    @brief  Converts SAID raw ADC Vdd measurement result into a voltage.
+    @param  adcdat
+            ADC result byte reported by READADCDAT
+    @return The voltage associated to adcdat (in mV).
+    @note   V = ADC_GAIN * (ADCDAT-2)
+            Datasheet: ADC_GAIN=10.64 mV/LSB
+    @note   When using AOOSP_ADC_FLAGS_MUX_VDD in aoosp_send_setadc().
+*/
+int aoosp_prt_adcvdd(uint16_t adcdat) {
+  #define ADCGAIN2    10640 // uV/LSB
+  // adcdat is 16 bit, fits in 32 bits int, even after multiplying with ADCGAIN
+  int Vf= ((int)adcdat)*ADCGAIN2; // in uV
   return (Vf+500)/1000; // round to mV
 }
 

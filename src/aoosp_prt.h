@@ -1,6 +1,6 @@
 // aoosp_prt.h - helpers to pretty print OSP telegrams in human readable form
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -30,8 +30,10 @@ int          aoosp_prt_temp_rgbi(uint8_t temp);
 // Converts SAID raw temperature to Celsius.
 int          aoosp_prt_temp_said(uint8_t temp);      
 
-// Converts SAID raw ADC measurement result into a voltage (mV).
+// Converts SAID raw ADC driver measurement result into a voltage (mV).
 int          aoosp_prt_adc(uint16_t adcdat);
+// Converts SAID raw ADC Vdd measurement result into a voltage (mV).
+int          aoosp_prt_adcvdd(uint16_t adcdat);
 //  Converts an ADC mux input to a pin name of a SAID (like "B2")
 const char * aoosp_prt_adcmux(int adcdat);
 

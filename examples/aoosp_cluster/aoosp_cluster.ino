@@ -1,6 +1,6 @@
 // aoosp_cluster.ino - illustrates how to use driver cluster 
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -35,21 +35,23 @@ LED which is then driven by 48 + 48 = 96 mA.
 
 The designer also needs to configures the SAID to have drivers that are 
 tied to the same LED (on the PCB), run synchronously. This is done with the 
-CH_CLUSTERING bits in OTP. Note that there are only 8 cluster configurations, 
+CH_CLUSTERING bits in OTP. There are (only) 8 cluster configurations, 
 and the PCB wiring (which drivers are connected to the same LED) must match 
 the clustering configured in OTP.
 
 None of the demo boards in the evaluation kit tie together SAID outputs, so 
 true clustering cannot be demonstrated with the evaluation kit alone. On all 
 eval boards, each output has its own red, green, blue LED (in an RGB triplet).
-We treat those as indicator LEDs to see which channels are clustered and 
-activated by setpwmchn telegrams.
+This example uses the SAIDbasic board (which has no drivers tied together);
+we treat the individual R, G, and B LEDs in the triplets as indicators to 
+see which channels are clustered and activated by setpwmchn telegrams.
 
-This demo pick cluster configuration 7 because it is the "wildest" clustering.
-The diagram below shows the 9 drivers, eg on the left channel 0 with drivers 
-0.R, 0.G, and 0.B. We see which drivers are tied together for configuration 7,
-eg 0.R and 0.G. Finally, we see for each cluster which driver is the "main", 
-e.g. 0.R, the others are "sub". Only setpwmchn to main are effective.
+This demo pick cluster configuration 7 because it is the "wildest" (most 
+irregular) clustering. The diagram below shows the 9 drivers (at the bottom); 
+e.g. on the left channel 0 with drivers 0.R, 0.G, and 0.B. We see which 
+drivers are tied together; e.g. 0.R and 0.G. Finally, we see for each cluster 
+which driver is the "main" (e.g. 0.R), the others are "sub" (e.g. 0.G). 
+Only setpwmchn's to main are effective.
 
     |               |               |
     +---+   +-------+---+---+       +---+---+
@@ -59,8 +61,8 @@ e.g. 0.R, the others are "sub". Only setpwmchn to main are effective.
   +---+---+---+   +---+---+---+   +---+---+---+
 
 This demo will configure one SAID for cluster 7, and then send it 9 times a
-setpwmchn, each time only activating one driver. The indicator LEDs will show
-that only writes to "sub" drivers are discarded, and that writes to "main"
+setpwmchn, each time only activating one driver. The (indicator) LEDs will 
+show that writes to "sub" drivers are discarded, and that writes to "main"
 drivers are copied to their associated "sub".
 
 One final warning: to configure the cluster a write to OTP is needed,
@@ -73,7 +75,7 @@ HARDWARE
 Have a cable from OSP32.OUT connector to SAIDbasic.IN and from
 SAIDbasic.OUT to OSP32.IN connector. Alternatively, leave out 
 the SAIDbasic board and connect OSP32.OUT directly to OSP32.IN.
-We prefer to have the SAIDbasic booard in between, because the
+We prefer to have the SAIDbasic board in between, because the
 SAID IN on the OSP32 board has its RGB triplets in reverse order
 complicating the understanding.
 In Arduino select board "ESP32S3 Dev Module".
@@ -121,16 +123,16 @@ done
 #define OTPMASK_CH_CLUSTERING  0x1F      // mask for the field CH_CLUSTERING
 #define OTPMASK_CLUSTER(cl)    ((cl)<<5) // or mask for cluster
 
-#define CASE_DELAY1            2000   // number of ms each case is shown
-#define CASE_DELAY2            200    // number of ms pause after each delay
-#define VERBOSE                0      // detailed print-out of each case
+#define CASE_DELAY1            5000      // number of ms each case is shown
+#define CASE_DELAY2            500       // number of ms pause after each delay
+#define VERBOSE                0         // detailed print-out of each case
 
 
 void cluster_case_Rgb_rgb_rgb() {
   aoresult_t result;
   result= aoosp_send_setpwmchn(ADDR, 0/*chn*/, 0x0FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/); 
   if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
-  Serial.printf("    YELLOW           OFF             OFF\n");
+  Serial.printf("   YELLOW            OFF             OFF\n");
 #if VERBOSE  
   Serial.printf(" onM onS off     off off off     off off off\n");
   Serial.printf("  +---+   +-------+---+---+       +---+---+\n");
@@ -189,7 +191,7 @@ void cluster_case_rgb_Rgb_rgb() {
   aoresult_t result;
   result= aoosp_send_setpwmchn(ADDR, 1/*chn*/, 0x0FFF/*red*/, 0x0000/*green*/, 0x0000/*blue*/);
   if( result!=aoresult_ok ) Serial.printf("setpwmchn %s\n", aoresult_to_str(result) );
-  Serial.printf("     BLUE           WHITE            OFF\n");
+  Serial.printf("    BLUE            WHITE            OFF\n");
 #if VERBOSE  
   Serial.printf(" off off onS     onM onS onS     off off off\n");
   Serial.printf("  +---+   +-------+---+---+       +---+---+\n");
@@ -303,7 +305,7 @@ void cluster_case_rgb_rgb_rgB() {
 }
                                       
 
-// Prints old cluster, switches to new, prints new cluster. Requires OTP write, needs test passowrd
+// Prints old cluster, switches to new, prints new cluster. Requires OTP write, needs test password
 void set_cluster(int newcluster) {
   aoresult_t result;
   uint8_t    val, cluster;
@@ -341,7 +343,7 @@ void cluster_demo() {
   if( ! AOOSP_IDENTIFY_IS_SAID(id) ) Serial.printf("ERROR: targeting node %03X, but this is not a SAID\n", ADDR );
 
   // Configure cluster 
-  // TIP: comment this line out (or set wrong password) to see how the cases drive the 9 LEDs
+  // TIP: comment this line out (or set wrong password) to see how the test cases drive the 9 LEDs with no clustering enabled.
   set_cluster(7);
 
   // Clear the error flags of all nodes; SAIDs have the V flag (over-voltage) after reset, preventing them from going active.

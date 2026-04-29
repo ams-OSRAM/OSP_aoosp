@@ -1,6 +1,6 @@
 // aoosp_send.h - send command telegrams (and receive response telegrams)
 /*****************************************************************************
- * Copyright 2024,2025 by ams OSRAM AG                                       *
+ * Copyright 2024-2026 by ams OSRAM AG                                       *
  * All rights are reserved.                                                  *
  *                                                                           *
  * IMPORTANT - PLEASE READ CAREFULLY BEFORE COPYING, INSTALLING OR USING     *
@@ -29,8 +29,10 @@
 // === LOG ================================================
 
 
-// When set to 0, the aoosp library has logging code compiled out, and the API
-// functions are stubbed to empty. When 1, aoosp_loglevel_set() controls detail
+// When set to 0, the aoosp library has logging code compiled out, 
+// and the aoosp_loglevel_set/aoosp_loglevel_get API functions are 
+// stubbed to empty. 
+// When 1, aoosp_loglevel_set() controls detail of logging.
 #define AOOSP_LOG_ENABLED 1
 
 
@@ -525,13 +527,14 @@ aoresult_t aoosp_send_setcurchn(uint16_t addr, uint8_t chn, uint8_t flags, uint8
 #define AOOSP_ADC_FLAGS_MUX_DRVG0          0x07
 #define AOOSP_ADC_FLAGS_MUX_DRVG1          0x08
 #define AOOSP_ADC_FLAGS_MUX_DRVG2          0x09
+#define AOOSP_ADC_FLAGS_MUX_VDD            0x0D
 #define AOOSP_ADC_FLAGS_MUX_DRVc0(col)     ((col)==0 ? AOOSP_ADC_FLAGS_MUX_DRVR0 : ((col)==1?AOOSP_ADC_FLAGS_MUX_DRVG0:AOOSP_ADC_FLAGS_MUX_DRVB0) ) // 0=R,1=G,2=B
 #define AOOSP_ADC_FLAGS_MUX_DRVcc(col,chn) ( AOOSP_ADC_FLAGS_MUX_DRVc0(col)+(chn) )
 // Telegram 54 READADC - asks the addressed node to respond with the ADC configuration (the data is in telegram 5C).
 aoresult_t aoosp_send_readadc(uint16_t addr, uint8_t * flags);
 
 
-// Telegram 55 SETADC  - configures the ADC to measure Vf any of the drivers
+// Telegram 55 SETADC  - configures the ADC to measure Vf any of the drivers, get ADC measurement via 0x5C READADCDAT
 aoresult_t aoosp_send_setadc(uint16_t addr, uint8_t flags);
 
 
@@ -587,7 +590,7 @@ aoresult_t aoosp_send_setotp(uint16_t addr, uint8_t otpaddr, uint8_t * buf, int 
 aoresult_t aoosp_send_settestdata(uint16_t addr, uint16_t data );
 
 
-// Telegram 5C READADCDAT - returns ADC value configured via telegram 55.
+// Telegram 5C READADCDAT - returns ADC value configured via telegram 0x55 SETADC.
 aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t * adcdat);
 
 
@@ -604,7 +607,7 @@ aoresult_t aoosp_send_readadcdat(uint16_t addr, uint16_t * adcdat);
 aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 
 
-// Telegram 60 READSTAT with SR
+// Telegram 60 -- no READSTAT with SR
 /* Not yet implemented */
 
 
@@ -612,7 +615,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 62 READTEMPST with SR
+// Telegram 62 -- no READTEMPST with SR
 /* Not yet implemented */
 
 
@@ -620,7 +623,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 64 READCOMST with SR
+// Telegram 64 -- no READCOMST with SR
 /* Not yet implemented */
 
 
@@ -628,7 +631,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 66 READLEDST  with SR
+// Telegram 66 -- no READLEDST with SR
 /* Not yet implemented */
 
 
@@ -636,7 +639,7 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 68 READTEMP with SR
+// Telegram 68 -- no READTEMP with SR
 /* Not yet implemented */
 
 
@@ -688,8 +691,8 @@ aoresult_t aoosp_send_settestpw(uint16_t addr, uint64_t pw);
 /* Reserved telegram ID */
 
 
-// Telegram 75 SETADC with SR
-/* Not yet implemented */
+// Telegram 75 SETADC with SR - configures the ADC to measure Vf of any of the drivers
+aoresult_t aoosp_send_setadc_sr(uint16_t addr, uint8_t flags, uint8_t * temp, uint8_t * stat);
 
 
 // Telegram 76 -- no READI2CCFG with SR

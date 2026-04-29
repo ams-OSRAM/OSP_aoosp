@@ -37,7 +37,8 @@ You can find them in the Arduino IDE via
 - **aoosp_min** ([source](examples/aoosp_min))  
   This "blinky" demo sends a minimal set of OSP telegrams that light up an LED
   connected to a SAID channel. Once using BiDir, once using Loop.
-  Then repeats.
+  Then repeats. See also the [template](examples/aoosp_template), even simpler
+  but less comments.
 
 - **aoosp_topo** ([source](examples/aoosp_topo))  
   This demo scans all nodes and prints out the chain configuration:
@@ -108,6 +109,10 @@ You can find them in the Arduino IDE via
   Once we use the high level aoosp API, and once we use low level aospi API.
   The conclusion is that the software overhead can be ignored.
 
+- **aoosp_tfwd** ([source](examples/aoosp_tfwd))  
+  This demo more structurally measures the round trip time of telegrams 
+  and derives the node forwarding time from that.
+
 - **aoosp_cluster** ([source](examples/aoosp_cluster))  
   This demo shows how clustering works - even on the evaluation kit,
   where none of the SAIDs is wired for clustering.
@@ -117,6 +122,10 @@ You can find them in the Arduino IDE via
   This demo shows how to use the ASKTINFO feature. The `asktinfo` telegram 
   collects the minimum and maximum temperature over an OSP chain using a 
   mechanism called "serial cast". This demo also explains serial cast.
+
+- **aoosp_psi5** ([source](examples/aoosp_psi5))  
+  This demo shows that telegrams with a PSI of 5 are not forwarded by OSP V1.0
+  nodes like the RGBIs on SAIDbasic demo board. 
 
 - **aoosp_otp** ([source](examples/aoosp_otp))  
   This demo reads and writes from/to the mirror of the OTP 
@@ -130,6 +139,11 @@ You can find them in the Arduino IDE via
   The _OTP password must be known and enabled_ or this example will not work.
   A lab power supply is needed.
   A SAID is needed whose OTP can be modified - this can not be undone.
+
+- **aoosp_template** ([source](examples/aoosp_template))  
+  This is not really a demo, although it does switch the first RGB triplet
+  to red. This is a template sketch for a short sequence of OSP telegrams.
+  See also the [minimal](examples/aoosp_min) example, with more comments.
 
 
 ## Module architecture
@@ -254,6 +268,14 @@ Some frequent ones have been abstracted in this module.
 
 ## Version history _aoosp_
 
+- **2026 April 29, 0.10.0**
+  - Added `aoosp_send_setadc_sr()`; doc updates in `aoosp_send_setadc()`.
+  - Added ADC MUX channel `AOOSP_ADC_FLAGS_MUX_VDD`, and `aoosp_prt_adcvdd()`.
+  - `aoosp_send_i2cwrite8()`, `aoosp_send_i2cwrite12()`, `aoosp_exec_i2cwrite8()` and `aoosp_exec_i2cwrite12()` now allow more buffer sizes (the ones resulting in PSI of 5).
+  - Added examples `aoosp_psi5.ino`, `aoosp_tfwd.ino` and `aoosp_template.ino`.
+  - Updated OTP comments; fixed typos in `aoosp_cluster.ino` and `aoosp_send.h`.
+  - Fixed bug: compile error with `#define AOOSP_LOG_ENABLED 0`.
+  
 - **2025 September 17, 0.9.0**
   - Improved documentation for `aoosp_adcled.ino`, `aoosp_adcpot.ino`, 
     `aoosp_cluster.ino`, `aoosp_sync.ino`, and `aoosp_otp.ino`.
@@ -266,7 +288,6 @@ Some frequent ones have been abstracted in this module.
     and macros `aoosp_exec_i2cread12()`, `aoosp_exec_i2cwrite12()`.
   - Improved comments in `aoosp_send.cpp/h`.
   - Added link to examples.
-  
   
 - **2025 May 21, 0.8.0**
   - Added examples `aoosp_adcled.ino` and `aoosp_adcpot.ino`.
@@ -281,7 +302,6 @@ Some frequent ones have been abstracted in this module.
   - Documentation (of examples) extended with new RGB names on OSP32 V11 ("L2.1 aka IN1").
   - Improved explanation of `aoosp_sync`.
   - Added link towards training slides in `aoosp_otpburn.ino`.
-
   
 - **2025 March 3, 0.7.0**
   - WARNING: AI constants AOOSP_I2CCFG_SPEED_XXX have been renamed to match new formula.
